@@ -119,6 +119,7 @@ func HomeHandler(response http.ResponseWriter, request *http.Request){
 		http.Error(response, fmt.Sprintf("home.html file error %v", err), 500)
 	}
 	fmt.Fprint(response, string(webpage));
+	fmt.Println("Sent response to /home")
 }
 
 // Respond to URLs of the form /item/...
@@ -149,6 +150,26 @@ func ItemHandler(response http.ResponseWriter, request *http.Request){
 	}
 }
 
+// Respond to URLs of the form /item/...
+func PutHandler(response http.ResponseWriter, request *http.Request){
+
+	// Check that this is actually a POST request or 404
+	if request.Method == "POST" {
+
+		// Parse the request with ParseForm()
+		if err := request.ParseForm(); err != nil {
+			fmt.Fprintf(response, "ParseForm() err: %v", err)
+			return
+		}
+		fmt.Println("post recieved: %v",request.PostForm)
+		fmt.Fprintf(response, "Post from website! request.PostForm = %v\n", request.PostForm)
+
+	} else {
+		// No, so send "page not found."
+		http.Error(response, "404 page not found", 404)
+	}
+}
+
 func main(){
 	port := 8097
 	portstring := strconv.Itoa(port)
@@ -159,9 +180,10 @@ func main(){
 	// See gorilla/mux for a more powerful matching system.
 	// Note that the "/" pattern matches all request URLs.
 	mux := http.NewServeMux()
-	mux.Handle("/home", http.HandlerFunc( HomeHandler ))
-	mux.Handle("/item/", http.HandlerFunc( ItemHandler ))
+	mux.Handle("/home", 	http.HandlerFunc( HomeHandler ))
+	mux.Handle("/item/",	http.HandlerFunc( ItemHandler ))
 	mux.Handle("/generic/", http.HandlerFunc( GenericHandler ))
+	mux.Handle("/put/", 	http.HandlerFunc( PutHandler ))
 
 	// Start listing on a given port with these routes on this server.
 	// (I think the server name can be set here too , i.e. "foo.org:8080")

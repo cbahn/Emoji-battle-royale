@@ -19,9 +19,19 @@
       $.get("/item/foo", ajax_handler, "json");
     }
 
+    var myData = { bears : 1, beats: 2}
+
+
+    var alert_box = function(){
+      alert("post request success");
+    }
+
+
     function LoadTime() {
       $(function() {
-        $.get("/item/foo",ajax_handler, "json");
+
+        //$.get("/item/foo",ajax_handler, "json");
+        $.post("/put/", myData, alert_box, "text")
       });
     }
 
