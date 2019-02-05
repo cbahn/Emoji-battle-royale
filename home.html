@@ -18,6 +18,16 @@
       /* see https://api.jquery.com/jQuery.get */
       $.get("/item/foo", ajax_handler, "json");
     }
+
+    function LoadTime() {
+      $(function() {
+        $.get("/item/foo",ajax_handler, "json");
+      });
+    }
+
+    // Run the LoadTime function every ~pi seconds
+    setInterval( LoadTime, 3141);
+
   </script>
 </head>
 <body>
@@ -25,3 +35,4 @@
   <p>The ajax request says the name is '<span id="the_span">?</span>'.</p>
 </body>
 </html>
+
