@@ -80,6 +80,7 @@ import (
 	"net/http"
 	"regexp"
 	"encoding/json"
+	"time"
 )
 
 func SetMyCookie(response http.ResponseWriter){
@@ -136,7 +137,9 @@ func ItemHandler(response http.ResponseWriter, request *http.Request){
 	// itemMatches is captured regex matches i.e. ["/item/which", "which"]
 	if len(itemMatches) > 0 {
 		// Yes, so send the JSON to the client.
-		data["name"] = itemMatches[1] 
+		// Send the data appended to the current time
+		t := time.Now()
+		data["name"] = t.Format("03:04:05")
 		json_bytes, _ := json.Marshal(data)
 		fmt.Fprintf(response, "%s\n", json_bytes)
 
