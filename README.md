@@ -1,18 +1,13 @@
-golang-webserver
+emoji-battle-royale
 ================
 
-An example of a webserver in the Go programming language,
-including a jQuery ajax request .
+A golang webserver I'm using to host a battle royale style voteoff for emojis on my discord
+
+Work in progress
 
     $ go run webserver.go
     
 ... and point a browser at http://localhost:8097/home
 which returns an HTML webpage (home.html).
 
-That webpage makes a 2nd GET request to http://localhost:8097/item/foo
-which return a JSON response {"name":"foo","what":"item"}, 
-part of which is inserted into the home page's span element.
-
-![](chrome_screenshot.png)
-
-
+Thanks to https://github.com/jimmahoney/golang-webserver for the awesome example server for me to start from
