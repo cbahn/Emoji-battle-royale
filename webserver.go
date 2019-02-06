@@ -186,16 +186,16 @@ func ResHandler(response http.ResponseWriter, request *http.Request){
 		return
 	}
 
-	webpage, err := ioutil.ReadFile("res/" + resource[1])
+	_, err := ioutil.ReadFile("res/" + resource[1])
+
 	if err != nil { // File read error, send 404
 		fmt.Println("Error processing response ",request.URL.Path,err)
 		http.Error(response, "404 page not found", 404)
 		return
 	}
 
-	// File loaded successfully, send page
-	fmt.Fprint(response, string(webpage));
-	fmt.Println("Sent response to /res" + resource[1])
+	// Everything's good, serve up the file
+	http.ServeFile(response, request, "res/" + resource[1])
 }
 
 
