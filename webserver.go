@@ -170,6 +170,35 @@ func PutHandler(response http.ResponseWriter, request *http.Request){
 	}
 }
 
+
+// Loads up files from the /res folder when.
+// WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
+func ResHandler(response http.ResponseWriter, request *http.Request){
+
+	// Only resources with characters from a-z, A-Z, 0-9, and the _ (underscore) character will be valid.
+	var resURL = regexp.MustCompile(`^/res/(\w+\.\w+)$`) 
+	var resource = resURL.FindStringSubmatch(request.URL.Path)
+	// resource is captured regex matches i.e. ["/res/file.txt", "file.txt"]
+
+	if len(resource) == 0 { // If url could not be parsed, send 404
+		fmt.Println("Could not parse /res request:", request.URL.Path)
+		http.Error(response, "404 page not found", 404)
+		return
+	}
+
+	webpage, err := ioutil.ReadFile("res/" + resource[1])
+	if err != nil { // File read error, send 404
+		fmt.Println("Error processing response ",request.URL.Path,err)
+		http.Error(response, "404 page not found", 404)
+		return
+	}
+
+	// File loaded successfully, send page
+	fmt.Fprint(response, string(webpage));
+	fmt.Println("Sent response to /res" + resource[1])
+}
+
+
 func main(){
 	port := 8097
 	portstring := strconv.Itoa(port)
@@ -184,6 +213,7 @@ func main(){
 	mux.Handle("/item/",	http.HandlerFunc( ItemHandler ))
 	mux.Handle("/generic/", http.HandlerFunc( GenericHandler ))
 	mux.Handle("/put/", 	http.HandlerFunc( PutHandler ))
+	mux.Handle("/res/",		http.HandlerFunc( ResHandler ))
 
 	// Start listing on a given port with these routes on this server.
 	// (I think the server name can be set here too , i.e. "foo.org:8080")

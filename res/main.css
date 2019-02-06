@@ -1,0 +1,24 @@
+body {
+  margin: 2vw;
+  background-color: #35383d;
+}
+
+.gridwrapper {
+  display: grid;
+  grid-template-columns: repeat(7, 12vw);
+  grid-template-rows: 12vw;
+  grid-gap: 2vw;
+  background-color: #35383d;
+  color: #0000FF;
+}
+
+.thumb {
+  text-align: center;
+  height: 12vw;
+  background-size: cover;
+  border-radius: 0.0vw;
+}
+
+.thumb:active {
+   opacity: 0.1; 
+}
