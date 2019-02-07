@@ -1,1 +1,33 @@
-<h1> HI THIS IS about.html </h1>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script type='text/javascript'>
+	
+	function createCookie(name,value,days) {
+		if (days) {
+			var date = new Date();
+			date.setTime(date.getTime()+(days*24*60*60*1000));
+			var expires = "; expires="+date.toGMTString();
+		}
+		else var expires = "";
+		document.cookie = name+"="+value+expires+"; path=/";
+	}
+
+	function setUsername() {
+		var x = $("#username_input").val()
+		createCookie('username',x,10);
+		$("#username_show").text(x)
+	}
+</script>
+
+<style>
+input{
+	font-family:"Courier New", Courier, monospace;
+}
+</style>
+
+<h1> HI THIS IS: about.html </h1>
+<h2> Your name is <span id="username_show">???</span>.</h2>
+
+<form name="nameform" action="javascript:setUsername()">
+	<p>Set Name here <input id="username_input" type="text" maxlength="20" pattern="[A-Za-z0-9 ]+" title="No punctuation please"></p>
+	<input type="submit">
+</form>

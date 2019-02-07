@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"path/filepath"
 //	"encoding/json"
 //	"time"
 	"github.com/gorilla/mux"
@@ -74,7 +75,7 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request){
 // Loads up files from the /res folder when.
 // WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
 func ResHandler(response http.ResponseWriter, request *http.Request){
-
+	resourceFolder := "res"
 	// Only resources with characters from a-z, A-Z, 0-9, and the _ (underscore) character will be valid.
 	var resURL = regexp.MustCompile(`^/res/(\w+\.\w+)$`) 
 	var resource = resURL.FindStringSubmatch(request.URL.Path)
@@ -86,16 +87,8 @@ func ResHandler(response http.ResponseWriter, request *http.Request){
 		return
 	}
 
-	_, err := ioutil.ReadFile("res/" + resource[1])
-
-	if err != nil { // File read error, send 404
-		fmt.Println("Error processing response ",request.URL.Path,err)
-		http.Error(response, "404 page not found", 404)
-		return
-	}
-
 	// Everything's good, serve up the file
-	http.ServeFile(response, request, "res/" + resource[1])
+	http.ServeFile(response, request, filepath.Join(resourceFolder,resource[1]) )
 }
 
 
@@ -107,12 +100,12 @@ func main(){
 	//  not garbage like the default one.
 	mux := mux.NewRouter()
 	
-	mux.Handle("/generic/", http.HandlerFunc( GenericHandler  ))
-	mux.Handle("/about",	http.HandlerFunc( AboutHandler    ))
-	mux.Handle("/vote",		http.HandlerFunc( VoteGETHandler  )).Methods("GET")
-	mux.Handle("/vote",		http.HandlerFunc( VotePOSTHandler )).Methods("POST")
-	mux.Handle("/res/",		http.HandlerFunc( ResHandler      ))
-	mux.Handle("/", 		http.HandlerFunc( HomeHandler     )).Methods("GET")
+	mux.Handle("/generic/", 		http.HandlerFunc( GenericHandler  ))
+	mux.Handle("/about",			http.HandlerFunc( AboutHandler    ))
+	mux.Handle("/vote",				http.HandlerFunc( VoteGETHandler  )).Methods("GET")
+	mux.Handle("/vote",				http.HandlerFunc( VotePOSTHandler )).Methods("POST")
+	mux.Handle("/res/{resource}",	http.HandlerFunc( ResHandler      ))
+	mux.Handle("/", 				http.HandlerFunc( HomeHandler     )).Methods("GET")
 
 	// Start listing on a given port with these routes on this server.
 	// (I think the server name can be set here too , i.e. "foo.org:8080")
