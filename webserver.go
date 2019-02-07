@@ -7,8 +7,9 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"encoding/json"
-	"time"
+//	"encoding/json"
+//	"time"
+	"github.com/gorilla/mux"
 )
 
 func SetMyCookie(response http.ResponseWriter){
@@ -37,6 +38,11 @@ func GenericHandler(response http.ResponseWriter, request *http.Request){
 	fmt.Fprintf(response, " request.URL.Path   '%v'\n", request.URL.Path)
 	fmt.Fprintf(response, " request.Form       '%v'\n", request.Form)
 	fmt.Fprintf(response, " request.Cookies()  '%v'\n", request.Cookies())
+	fmt.Fprintf(response, " request.RemoteAddr '%v'\n", request.RemoteAddr)
+}
+
+func AboutHandler(response http.ResponseWriter, request *http.Request){
+	http.ServeFile(response, request, "about.html")
 }
 
 // Respond to the URL /home with an html home page
@@ -50,54 +56,20 @@ func HomeHandler(response http.ResponseWriter, request *http.Request){
 	fmt.Println("Sent response to /home")
 }
 
-// Respond to URLs of the form /item/...
-func ItemHandler(response http.ResponseWriter, request *http.Request){
 
-	// Set cookie and MIME type in the HTTP headers.
-	SetMyCookie(response)
-	response.Header().Set("Content-type", "application/json")
-
-	// Some sample data to be sent back to the client.
-	data := map[string]string { "what" : "item", "name" : "" }
-
-	// Was the URL of the form /item/name ?
-	var itemURL = regexp.MustCompile(`^/item/(\w+)$`)
-	var itemMatches = itemURL.FindStringSubmatch(request.URL.Path)
-	// itemMatches is captured regex matches i.e. ["/item/which", "which"]
-	if len(itemMatches) > 0 {
-		// Yes, so send the JSON to the client.
-		// Send the data appended to the current time
-		t := time.Now()
-		data["name"] = t.Format("03:04:05")
-		json_bytes, _ := json.Marshal(data)
-		fmt.Fprintf(response, "%s\n", json_bytes)
-
-	} else {
-		// No, so send "page not found."
-		http.Error(response, "404 page not found", 404)
-	}
+func VoteGETHandler(response http.ResponseWriter, request *http.Request){
+	http.ServeFile(response, request, "vote.html")
 }
 
-// Respond to URLs of the form /item/...
-func PutHandler(response http.ResponseWriter, request *http.Request){
-
-	// Check that this is actually a POST request or 404
-	if request.Method == "POST" {
-
-		// Parse the request with ParseForm()
-		if err := request.ParseForm(); err != nil {
-			fmt.Fprintf(response, "ParseForm() err: %v", err)
-			return
-		}
-		fmt.Println("post recieved: %v",request.PostForm)
-		fmt.Fprintf(response, "Post from website! request.PostForm = %v\n", request.PostForm)
-
-	} else {
-		// No, so send "page not found."
-		http.Error(response, "404 page not found", 404)
+func VotePOSTHandler(response http.ResponseWriter, request *http.Request){
+	// Parse the request with ParseForm()
+	if err := request.ParseForm(); err != nil {
+		fmt.Fprintf(response, "ParseForm() err: %v", err)
+		return
 	}
+	fmt.Println("post recieved: %v",request.PostForm)
+	fmt.Fprintf(response, "request.PostForm = %v\n", request.PostForm)
 }
-
 
 // Loads up files from the /res folder when.
 // WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
@@ -131,17 +103,16 @@ func main(){
 	port := 8097
 	portstring := strconv.Itoa(port)
 
-	// Register request handlers for two URL patterns.
-	// (The docs are unclear on what a 'pattern' is, 
-	// but seems be the start of the URL, ending in a /).
-	// See gorilla/mux for a more powerful matching system.
-	// Note that the "/" pattern matches all request URLs.
-	mux := http.NewServeMux()
-	mux.Handle("/home", 	http.HandlerFunc( HomeHandler ))
-	mux.Handle("/item/",	http.HandlerFunc( ItemHandler ))
-	mux.Handle("/generic/", http.HandlerFunc( GenericHandler ))
-	mux.Handle("/put/", 	http.HandlerFunc( PutHandler ))
-	mux.Handle("/res/",		http.HandlerFunc( ResHandler ))
+	// We're using gorilla/mux as the router because it's
+	//  not garbage like the default one.
+	mux := mux.NewRouter()
+	
+	mux.Handle("/generic/", http.HandlerFunc( GenericHandler  ))
+	mux.Handle("/about",	http.HandlerFunc( AboutHandler    ))
+	mux.Handle("/vote",		http.HandlerFunc( VoteGETHandler  )).Methods("GET")
+	mux.Handle("/vote",		http.HandlerFunc( VotePOSTHandler )).Methods("POST")
+	mux.Handle("/res/",		http.HandlerFunc( ResHandler      ))
+	mux.Handle("/", 		http.HandlerFunc( HomeHandler     )).Methods("GET")
 
 	// Start listing on a given port with these routes on this server.
 	// (I think the server name can be set here too , i.e. "foo.org:8080")

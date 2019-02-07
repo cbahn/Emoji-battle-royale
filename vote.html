@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>go server example</title>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script>
+    $(function(){ ajax_request() });
+    var ajax_handler = function(json){
+      /* debugging : */
+      /* alert(" typeof(json) = " + typeof(json) + "; json = " + json); *
+      /* the json data for /item/foo should be {"name":"foo","what":"item"} */
+     $("#the_span").html(json.name);  
+    }
+    var ajax_request = function(){
+      /* see https://api.jquery.com/jQuery.get */
+      $.get("/vote", ajax_handler, "json");
+    }
+
+    var myData = { test_one : 1, test_two: 2}
+
+
+    var post_success_process = function(){
+      $("#the_span").text("Post request success!")
+    }
+
+
+    function LoadTime() {
+      $(function() {
+
+        //$.get("/item/foo",ajax_handler, "json");
+        $.post("/vote", myData, post_success_process, "text")
+      });
+    }
+
+    // Run the LoadTime function every 10 seconds
+    setInterval( LoadTime, 10*1000);
+
+  </script>
+  <link rel="stylesheet" type="text/css" href="res/main.css">
+</head>
+<body>
+  <h1>go server example</h1>
+  <p>The ajax request says the name is '<span id="the_span">?</span>'.</p>
+  <div class='gridwrapper'>
+  <img class='thumb' src='im_00.png'>
+  <img class='thumb' src='im_01.png'>
+  <img class='thumb' src='im_02.png'>
+  <img class='thumb' src='im_03.png'>
+  <img class='thumb' src='im_04.png'>
+  <img class='thumb' src='im_05.png'>
+  <img class='thumb' src='im_06.png'>
+  <img class='thumb' src='im_07.png'>
+  <img class='thumb' src='im_08.png'>
+  <img class='thumb' src='im_09.png'>
+  <img class='thumb' src='im_10.png'>
+  <img class='thumb' src='im_11.png'>
+  <img class='thumb' src='im_12.png'>
+  <img class='thumb' src='im_13.png'>
+  <img class='thumb' src='im_14.png'>
+  <img class='thumb' src='im_15.png'>
+  <img class='thumb' src='im_16.png'>
+  <img class='thumb' src='im_17.png'>
+  <img class='thumb' src='im_18.png'>
+  <img class='thumb' src='im_19.png'>
+  <img class='thumb' src='im_20.png'>
+  <img class='thumb' src='im_21.png'>
+  <img class='thumb' src='im_22.png'>
+  <img class='thumb' src='im_23.png'>
+  <img class='thumb' src='im_24.png'>
+  <img class='thumb' src='im_25.png'>
+  <img class='thumb' src='im_26.png'>
+  <img class='thumb' src='im_27.png'>
+  <img class='thumb' src='im_28.png'>
+  <img class='thumb' src='im_29.png'>
+  <img class='thumb' src='im_30.png'>
+  <img class='thumb' src='im_31.png'>
+  <img class='thumb' src='im_32.png'>
+  <img class='thumb' src='im_33.png'>
+  <img class='thumb' src='im_34.png'>
+  <img class='thumb' src='im_35.png'>
+  <img class='thumb' src='im_36.png'>
+  <img class='thumb' src='im_37.png'>
+  <img class='thumb' src='im_38.png'>
+  <img class='thumb' src='im_39.png'>
+  <img class='thumb' src='im_40.png'>
+  <img class='thumb' src='im_41.png'>
+  <img class='thumb' src='im_42.png'>
+  <img class='thumb' src='im_43.png'>
+  <img class='thumb' src='im_44.png'>
+  <img class='thumb' src='im_45.png'>
+  <img class='thumb' src='im_46.png'>
+  <img class='thumb' src='im_47.png'>
+  <img class='thumb' src='im_48.png'>
+  <img class='thumb' src='im_49.png'>
+  </div>
+</body>
+</html>
+
