@@ -2,7 +2,8 @@
 <html>
 <head>
   <meta charset='utf-8'>
-  <title>go server example</title>
+  <title>Emoji Battle Royale</title>
+  <link rel="shortcut icon" type="image/x-icon" href="res/favicon.ico">
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
   <script>
     $(function(){ ajax_request() });
@@ -25,7 +26,7 @@
     }
 
 
-    function LoadTime() {
+    function SendData() {
       $(function() {
         $.ajax({
           url: '/vote',
@@ -41,14 +42,40 @@
       });
     }
 
-    // Run the LoadTime function every 10 seconds
-    setInterval( LoadTime, 10*1000);
+    var send_interval = 10*1000; // in seconds
+
+    function progress_bar() {
+      var width = 1;
+      var id = setInterval(frame, send_interval/100);
+      function frame() {
+        if(width >= 100) {
+          clearInterval(id);
+          SendData()
+        } else {
+          width++;
+          $("#progressBar").css('width',width+'%');
+        }
+      }
+    }
+
+    // Run the SendData function every 10 seconds
+    progress_bar()
+    setInterval( progress_bar, send_interval);
 
   </script>
   <link rel="stylesheet" type="text/css" href="res/main.css">
 </head>
 <body>
-  <h1>go server example</h1>
+
+  <h1>VOTING PAGE!</h1>
+  <h3>Sending click data...</h1>
+
+
+  <div id="barContainer">
+    <div id="progressBar" style="height:24px;width:0"></div>
+  </div>
+  <h3>Clicks aren't recorded yet, so all the data we send is zeros  :-/</h3>
+
   <div class='gridwrapper'>
   <img class='thumb' src='res/pic/im_00.png'>
   <img class='thumb' src='res/pic/im_01.png'>

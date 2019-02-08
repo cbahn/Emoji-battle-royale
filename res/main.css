@@ -1,6 +1,9 @@
 body {
   margin: 2vw;
+  /* The background color and font are the same as discords */
+  color: white;
   background-color: #35383d;
+  font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;
 }
 
 .gridwrapper {
@@ -23,4 +26,21 @@ body {
 
 .thumb:active {
    opacity: 0.1; 
+}
+
+
+/* This barContainer stuff can go when we get rid of the loading bar */
+#barContainer {
+  background-color: black;
+  border-radius: 13px;
+  /* (height of inner div) / 2 + padding */
+  padding: 3px;
+}
+
+#barContainer>div {
+  background-color: #7785D8;
+  width: 40%;
+  /* Adjust with JavaScript */
+  height: 20px;
+  border-radius: 10px;
 }
