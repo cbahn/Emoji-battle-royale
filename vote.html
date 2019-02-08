@@ -8,9 +8,7 @@
   <script>
     $(function(){ ajax_request() });
     var ajax_handler = function(json){
-      /* debugging : */
-      /* alert(" typeof(json) = " + typeof(json) + "; json = " + json); *
-      /* the json data for /item/foo should be {"name":"foo","what":"item"} */
+
      $("#the_span").html(json.name);  
     }
     var ajax_request = function(){
@@ -42,7 +40,8 @@
       });
     }
 
-    var send_interval = 10*1000; // in seconds
+    //  send data every 10 seconds
+    var send_interval = 10*1000;
 
     function progress_bar() {
       var width = 1;
@@ -58,7 +57,6 @@
       }
     }
 
-    // Run the SendData function every 10 seconds
     progress_bar()
     setInterval( progress_bar, send_interval);
 
