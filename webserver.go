@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"path/filepath"
-//	"encoding/json"
+	"encoding/json"
 //	"time"
 	"github.com/gorilla/mux"
 )
@@ -57,9 +57,14 @@ func HomeHandler(response http.ResponseWriter, request *http.Request){
 	fmt.Println("Sent response to /home")
 }
 
-
+// Serves the vote.html file
 func VoteGETHandler(response http.ResponseWriter, request *http.Request){
 	http.ServeFile(response, request, "vote.html")
+}
+
+type Test_struct struct {
+	Vote string `json:"vote"`
+	Other_Vote string `json:"other_vote"`
 }
 
 func VotePOSTHandler(response http.ResponseWriter, request *http.Request){
@@ -68,8 +73,17 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request){
 		fmt.Fprintf(response, "ParseForm() err: %v", err)
 		return
 	}
-	fmt.Println("post recieved: %v",request.PostForm)
-	fmt.Fprintf(response, "request.PostForm = %v\n", request.PostForm)
+
+	decoder := json.NewDecoder(request.Body)
+	var t Test_struct
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Fprint(response, "THAT JSON IS GARBAGE")
+	}
+
+
+	fmt.Println("post recieved: %v", t)
+	fmt.Fprintf(response, "request.PostForm = %v\n", request.Body)
 }
 
 // Loads up files from the /res folder when.
@@ -96,8 +110,8 @@ func main(){
 	port := 8097
 	portstring := strconv.Itoa(port)
 
-	// We're using gorilla/mux as the router because it's
-	//  not garbage like the default one.
+	// We're using gorilla/mux as the router because
+	// it's not garbage like the default one.
 	mux := mux.NewRouter()
 	
 	mux.Handle("/generic/", 		http.HandlerFunc( GenericHandler  ))
@@ -108,7 +122,6 @@ func main(){
 	mux.Handle("/", 				http.HandlerFunc( HomeHandler     )).Methods("GET")
 
 	// Start listing on a given port with these routes on this server.
-	// (I think the server name can be set here too , i.e. "foo.org:8080")
 	log.Print("Listening on port " + portstring + " ... ")
 	err := http.ListenAndServe(":" + portstring, mux)
 	if err != nil {

@@ -17,7 +17,7 @@
       $.get("/vote", ajax_handler, "json");
     }
 
-    var myData = { test_one : 1, test_two: 2}
+    var myData = {vote: "steve", other_vote: "Betsy"}
 
 
     var post_success_process = function(){
@@ -29,7 +29,19 @@
       $(function() {
 
         //$.get("/item/foo",ajax_handler, "json");
-        $.post("/vote", myData, post_success_process, "text")
+        // $.post("/vote", myData, post_success_process, "text")
+
+        $.ajax({
+          url: '/vote',
+          type: 'post',
+          dataType: 'json',
+          contentType: 'application/json',
+          success: function (data) {
+            $("#the_span").text(data.msg)
+          },
+          data: JSON.stringify(myData)
+        })
+
       });
     }
 
