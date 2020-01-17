@@ -93,7 +93,10 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request){
 		return
 	}
 
-	fmt.Sprint("post recieved: Vote->%s\n", postData["vote"])
+	if val, ok := postData["vote"]; ok {
+		fmt.Sprint(val);
+		fmt.Sprint("post recieved: Vote->%s\n", postData["vote"])
+	}
 	fmt.Fprintf(response, "request.PostForm = %v\n", request.Body)
 }
 
