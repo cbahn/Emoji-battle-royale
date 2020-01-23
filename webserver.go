@@ -97,25 +97,9 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 	}
 
 	fmt.Println(votes.ID, votes.Votes)
-
-	/*
-		// Render the raw post into postData, of type map[string]string
-		postData, err := jsonReaderToMap(request.Body)
-		if err != nil {
-			fmt.Printf("error: %s\n", err)
-			return
-		}
-
-
-		if val, ok := postData["vote"]; ok {
-			_ = fmt.Sprint(val) // My linter really doesn't like it when the result of Sprint isn't used
-			_ = fmt.Sprintf("post recieved: Vote->%s\n", postData["vote"])
-		}
-		fmt.Fprintf(response, "request.PostForm = %v\n", request.Body)
-	*/
 }
 
-// Loads up files from the /res folder
+// ResHandler loads up files from the /res folder
 // WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
 func ResHandler(response http.ResponseWriter, request *http.Request) {
 	resourceFolder := "res"

@@ -25,15 +25,30 @@
 
 
     function SendData() {
+
+      console.log( myData )
+      // This should be computed on page load and stored somewhere else
+      number_of_candidates =  $(".thumb").toArray().length;      
+
       json_to_send = {
         "ID":"23402f503",
-        "Votes": [0,3,0]
+        "Votes": Array(100).fill(0)
       };
+
+      // awkward transciption of myData into the vote submission format
+      // In the future, we should store the data as an array in the first place
+      for( var i = 0; i<number_of_candidates; i++ ) {
+
+        // I don't like this any more than you do
+        var key = "img" + String(i).padStart(2,'0')
+        if( key in myData) {
+          json_to_send.Votes[i] += myData[key]
+        }
+      }
 
       $.ajax({
         url: '/vote',
         type: 'post',
-        dataType: 'json',
         contentType: 'application/json',
         success: function (data) {
           $("#the_span").text(data.msg)
@@ -71,7 +86,6 @@
             myData[id]++;
           }
         }
-        console.log(myData);
       })
     })
 
@@ -91,7 +105,7 @@
   <div id="barContainer">
     <div id="progressBar" style="height:24px;width:0"></div>
   </div>
-  <h3>Clicks aren't recorded yet, so all the data we send is zeros  :-/</h3>
+  <h3 id="the_span"></h3>
 
   <div class='gridwrapper'>
   <img id="img00" class='thumb' src='res/pic/im_00.png'>
