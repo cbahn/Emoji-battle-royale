@@ -22,6 +22,17 @@ I have tested the following installation on Ubuntu 18.04.1 x64 using a Digital O
     $ go build webserver.go
     $ ./webserver
 
+### Messages
+
+Vote submissions from the client to the server take the form:
+``` json
+{
+  "Id":"39u9o8234",
+  "Votes": [0,9,1,0,2,0,0,0,0]
+}
+```
+The length of the votes array is equal to the number of candidates.
+
 ### Credits
 
 Thanks to https://github.com/jimmahoney/golang-webserver for the awesome example server for me to start from

@@ -25,7 +25,11 @@
 
 
     function SendData() {
-      console.log("it's happening!");
+      json_to_send = {
+        "ID":"23402f503",
+        "Votes": [0,3,0]
+      };
+
       $.ajax({
         url: '/vote',
         type: 'post',
@@ -38,7 +42,7 @@
         error: function (request, error) {
           console.log(" Can't do because: " + error);
         },
-        data: JSON.stringify(myData)
+        data: JSON.stringify(json_to_send)
       })
     }
 

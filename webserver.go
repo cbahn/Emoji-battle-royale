@@ -1,27 +1,28 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"strconv"
 	"log"
 	"net/http"
-	"regexp"
 	"path/filepath"
-	"encoding/json"
-	"io"
-//	"time"
+	"regexp"
+	"strconv"
+
+	//	"time"
 	"github.com/gorilla/mux"
 )
 
-func SetMyCookie(response http.ResponseWriter){
+func SetMyCookie(response http.ResponseWriter) {
 	// Add a simplistic cookie to the response.
-	cookie := http.Cookie{Name: "testcookiename", Value:"testcookievalue"}
+	cookie := http.Cookie{Name: "testcookiename", Value: "testcookievalue"}
 	http.SetCookie(response, &cookie)
 }
 
 // Respond to URLs of the form /generic/...
-func GenericHandler(response http.ResponseWriter, request *http.Request){
+func GenericHandler(response http.ResponseWriter, request *http.Request) {
 
 	// Set cookie and MIME type in the HTTP headers.
 	SetMyCookie(response)
@@ -34,7 +35,7 @@ func GenericHandler(response http.ResponseWriter, request *http.Request){
 	}
 
 	// Send the text diagnostics to the client.
-	fmt.Fprint(response,  "FooWebHandler says ... \n")
+	fmt.Fprint(response, "FooWebHandler says ... \n")
 	fmt.Fprintf(response, " request.Method     '%v'\n", request.Method)
 	fmt.Fprintf(response, " request.RequestURI '%v'\n", request.RequestURI)
 	fmt.Fprintf(response, " request.URL.Path   '%v'\n", request.URL.Path)
@@ -43,35 +44,33 @@ func GenericHandler(response http.ResponseWriter, request *http.Request){
 	fmt.Fprintf(response, " request.RemoteAddr '%v'\n", request.RemoteAddr)
 }
 
-func AboutHandler(response http.ResponseWriter, request *http.Request){
+func AboutHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, "about.html")
 }
 
 // Respond to the URL /home with an html home page
-func HomeHandler(response http.ResponseWriter, request *http.Request){
+func HomeHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-type", "text/html")
 	webpage, err := ioutil.ReadFile("home.html")
-	if err != nil { 
+	if err != nil {
 		http.Error(response, fmt.Sprintf("home.html file error %v", err), 500)
 	}
-	fmt.Fprint(response, string(webpage));
+	fmt.Fprint(response, string(webpage))
 	fmt.Println("Sent response to /home")
 }
 
 // Serves the vote.html file
-func VoteGETHandler(response http.ResponseWriter, request *http.Request){
+func VoteGETHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, "vote.html")
 }
-
-
 
 // A utility function for converting the request.Body into a string->string map.
 // This is pretty fragile. If the json has a non-string type in it then the marshall fails.
 func jsonReaderToMap(jsonReader io.ReadCloser) (map[string]string, error) {
-	jsonBytes, err :=  ioutil.ReadAll(jsonReader)
+	jsonBytes, err := ioutil.ReadAll(jsonReader)
 	if err != nil {
 		// What could possibilty go wrong with this conversion?
-		panic(err) 
+		panic(err)
 	}
 
 	jsonMap := make(map[string]string)
@@ -82,30 +81,46 @@ func jsonReaderToMap(jsonReader io.ReadCloser) (map[string]string, error) {
 	return jsonMap, err
 }
 
+// VoteMessage struct
+type VoteMessage struct {
+	ID    string `json:"Id"`
+	Votes []uint `json:"Votes"`
+}
 
-// This recieves votes as POST requests to /vote and records them to the database
-func VotePOSTHandler(response http.ResponseWriter, request *http.Request){
+// VotePOSTHandler This recieves votes as POST requests to /vote and records them to the database
+func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 
-	// Render the raw post into postData, of type map[string]string
-	postData, err := jsonReaderToMap(request.Body)
+	votes := VoteMessage{}
+	err := json.NewDecoder(request.Body).Decode(&votes)
 	if err != nil {
-		fmt.Printf("error: %s\n", err)
-		return
+		panic(err) // IdIoMaTiC gO eRrOr HaNdLiNg
 	}
 
-	if val, ok := postData["vote"]; ok {
-		fmt.Sprint(val);
-		fmt.Sprint("post recieved: Vote->%s\n", postData["vote"])
-	}
-	fmt.Fprintf(response, "request.PostForm = %v\n", request.Body)
+	fmt.Println(votes.ID, votes.Votes)
+
+	/*
+		// Render the raw post into postData, of type map[string]string
+		postData, err := jsonReaderToMap(request.Body)
+		if err != nil {
+			fmt.Printf("error: %s\n", err)
+			return
+		}
+
+
+		if val, ok := postData["vote"]; ok {
+			_ = fmt.Sprint(val) // My linter really doesn't like it when the result of Sprint isn't used
+			_ = fmt.Sprintf("post recieved: Vote->%s\n", postData["vote"])
+		}
+		fmt.Fprintf(response, "request.PostForm = %v\n", request.Body)
+	*/
 }
 
 // Loads up files from the /res folder
 // WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
-func ResHandler(response http.ResponseWriter, request *http.Request){
+func ResHandler(response http.ResponseWriter, request *http.Request) {
 	resourceFolder := "res"
 	// Only resources with characters from a-z, A-Z, 0-9, and the _ (underscore) character will be valid.
-	var resURL = regexp.MustCompile(`^/res/(\w+\.\w+)$`) 
+	var resURL = regexp.MustCompile(`^/res/(\w+\.\w+)$`)
 	var resource = resURL.FindStringSubmatch(request.URL.Path)
 	// resource is captured regex matches i.e. ["/res/file.txt", "file.txt"]
 
@@ -116,16 +131,15 @@ func ResHandler(response http.ResponseWriter, request *http.Request){
 	}
 
 	// Everything's good, serve up the file
-	http.ServeFile(response, request, filepath.Join(resourceFolder,resource[1]) )
+	http.ServeFile(response, request, filepath.Join(resourceFolder, resource[1]))
 }
-
 
 // Loads up files from the /res/pic folder
 // WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
-func PicHandler(response http.ResponseWriter, request *http.Request){
+func PicHandler(response http.ResponseWriter, request *http.Request) {
 	resourceFolder := "res/pic"
 	// Only resources with characters from a-z, A-Z, 0-9, and the _ (underscore) character will be valid.
-	var resURL = regexp.MustCompile(`^/res/pic/(\w+\.\w+)$`) 
+	var resURL = regexp.MustCompile(`^/res/pic/(\w+\.\w+)$`)
 	var resource = resURL.FindStringSubmatch(request.URL.Path)
 	// resource is captured regex matches i.e. ["/res/file.txt", "file.txt"]
 
@@ -136,31 +150,29 @@ func PicHandler(response http.ResponseWriter, request *http.Request){
 	}
 
 	// Everything's good, serve up the file
-	http.ServeFile(response, request, filepath.Join(resourceFolder,resource[1]) )
+	http.ServeFile(response, request, filepath.Join(resourceFolder, resource[1]))
 }
 
-
-func main(){
+func main() {
 	port := 8097
 	portstring := strconv.Itoa(port)
 
 	// We're using gorilla/mux as the router because
 	// it's not garbage like the default one.
 	mux := mux.NewRouter()
-	
-	mux.Handle("/generic/", 		http.HandlerFunc( GenericHandler  ))
-	mux.Handle("/about",			http.HandlerFunc( AboutHandler    ))
-	mux.Handle("/vote",				http.HandlerFunc( VoteGETHandler  )).Methods("GET")
-	mux.Handle("/vote",				http.HandlerFunc( VotePOSTHandler )).Methods("POST")
-	mux.Handle("/res/{resource}",	http.HandlerFunc( ResHandler      ))
-	mux.Handle("/res/pic/{picture}",http.HandlerFunc( PicHandler	  ))
-	mux.Handle("/", 				http.HandlerFunc( HomeHandler     )).Methods("GET")
+
+	mux.Handle("/generic/", http.HandlerFunc(GenericHandler))
+	mux.Handle("/about", http.HandlerFunc(AboutHandler))
+	mux.Handle("/vote", http.HandlerFunc(VoteGETHandler)).Methods("GET")
+	mux.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
+	mux.Handle("/res/{resource}", http.HandlerFunc(ResHandler))
+	mux.Handle("/res/pic/{picture}", http.HandlerFunc(PicHandler))
+	mux.Handle("/", http.HandlerFunc(HomeHandler)).Methods("GET")
 
 	// Start listing on a given port with these routes on this server.
 	log.Print("Listening on port " + portstring + " ... ")
-	err := http.ListenAndServe(":" + portstring, mux)
+	err := http.ListenAndServe(":"+portstring, mux)
 	if err != nil {
 		log.Fatal("ListenAndServe error: ", err)
 	}
 }
-
