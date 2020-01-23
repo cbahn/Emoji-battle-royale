@@ -15,13 +15,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// SetMyCookie adds a simple cookie to the response
+// Just for testing right now
 func SetMyCookie(response http.ResponseWriter) {
-	// Add a simplistic cookie to the response.
 	cookie := http.Cookie{Name: "testcookiename", Value: "testcookievalue"}
 	http.SetCookie(response, &cookie)
 }
 
-// Respond to URLs of the form /generic/...
+// GenericHandler respond to URLs of the form /generic/...
 func GenericHandler(response http.ResponseWriter, request *http.Request) {
 
 	// Set cookie and MIME type in the HTTP headers.
@@ -44,11 +45,12 @@ func GenericHandler(response http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(response, " request.RemoteAddr '%v'\n", request.RemoteAddr)
 }
 
+// AboutHandler servers up the about page. Probably isn't nessesary :-\
 func AboutHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, "about.html")
 }
 
-// Respond to the URL /home with an html home page
+// HomeHandler respond to the URL /home with an html home page
 func HomeHandler(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-type", "text/html")
 	webpage, err := ioutil.ReadFile("home.html")
@@ -59,7 +61,7 @@ func HomeHandler(response http.ResponseWriter, request *http.Request) {
 	fmt.Println("Sent response to /home")
 }
 
-// Serves the vote.html file
+// VoteGETHandler serves the vote.html file
 func VoteGETHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, "vote.html")
 }
@@ -118,7 +120,7 @@ func ResHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, filepath.Join(resourceFolder, resource[1]))
 }
 
-// Loads up files from the /res/pic folder
+// PicHandler loads up files from the /res/pic folder
 // WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
 func PicHandler(response http.ResponseWriter, request *http.Request) {
 	resourceFolder := "res/pic"
