@@ -3,6 +3,7 @@ package database
 import (
 	//	"fmt"
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/boltdb/bolt"
@@ -35,24 +36,8 @@ func setupTestDB() (*bolt.DB, error) {
 	return db, nil
 }
 
-func destroyTestDB(db *bolt.DB) error {
-	// Delete the whole DB bucket
-	err := db.Update(func(tx *bolt.Tx) error {
-		err := tx.DeleteBucket([]byte("DB"))
-		if err != nil {
-			return fmt.Errorf("could not delete root bucket: %v", err)
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("could not delete testing buckets, %v", err)
-	}
-	return nil
-}
-
 func TestSimpleDatabase(t *testing.T) {
 	db, _ := setupTestDB()
-	defer destroyTestDB(db)
 
 	// Add "apple":"good"
 	_ = db.Update(func(tx *bolt.Tx) error {
@@ -72,8 +57,39 @@ func TestSimpleDatabase(t *testing.T) {
 		if string(v) != "good" {
 			t.Errorf("Expected apple, got %s\n", v)
 		}
-		fmt.Printf("The answer is: %s\n", v)
 		return nil
 	})
 
+}
+
+func TestSetGetTransaction(t *testing.T) {
+	db, err := setupDB()
+	resetSequence(db)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	tr := Transaction{"Jonny38275", []uint{1, 2, 3, 5, 8}}
+
+	err = addTransaction(db, tr)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Completed the ADD STEP")
+
+	tr2, err := getTransaction(db, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	if tr.UserID != tr2.UserID {
+		t.Errorf("Expected Jonny38275, got %s", tr2.UserID)
+	}
+
+	if tr2.Votes[1] != tr.Votes[1] {
+		t.Errorf("Votes[1] doesn't match")
+	}
 }
