@@ -209,3 +209,25 @@ func getTransaction(db *bolt.DB, trNumber uint32) (Transaction, error) {
 	}
 	return tr, nil
 }
+
+func getVotes(db *bolt.DB) ([]uint32, error) {
+
+	var votes []uint32
+
+	err := db.View(func(tx *bolt.Tx) error {
+
+		candidateCount := int(bytesToUint(tx.Bucket([]byte("STATE")).Get([]byte("candidateCount"))))
+
+		votes = make([]uint32, candidateCount)
+
+		votesBucket := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES"))
+		for i := 0; i < candidateCount; i++ {
+			votes[i] = bytesToUint(votesBucket.Get(uintToBytes(uint32(i))))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("View transaction failed")
+	}
+	return votes, nil
+}

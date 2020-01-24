@@ -72,7 +72,7 @@ func TestSetGetTransaction(t *testing.T) {
 
 func TestVoteCountAfterTransaction(t *testing.T) {
 	// Initalize
-	db, err := createOrOverwriteDB("test.db", 10)
+	db, err := createOrOverwriteDB("test.db", 4)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,6 +106,15 @@ func TestVoteCountAfterTransaction(t *testing.T) {
 	for i := range v {
 		if v[i] != tr.Votes[i] {
 			t.Errorf("Stored vote[%d] as %d, got %d", i, tr.Votes[i], v[i])
+		}
+	}
+
+	// 2nd check of the getVotes function
+	v2, err := getVotes(db)
+
+	for i := range v2 {
+		if v2[i] != tr.Votes[i] {
+			t.Errorf("Stored vote2[%d] as %d, got %d", i, tr.Votes[i], v[i])
 		}
 	}
 }
