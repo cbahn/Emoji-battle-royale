@@ -1,4 +1,4 @@
-/* This database code is based highly on this awesome boltdb example code:
+/* This database code was a lot easier to write with the awesome reference at:
 https://github.com/zupzup/boltdb-example/blob/master/main.go
 */
 
@@ -16,7 +16,7 @@ import (
 type Transaction struct {
 	UserID string `json:"UserID"`
 	// TimeStamp TimeDate
-	Votes []uint `json:"Votes"`
+	Votes []uint32 `json:"Votes"`
 }
 
 /* integer storage utilites */
@@ -47,6 +47,13 @@ func setupDB() (*bolt.DB, error) {
 		stateBucket, err := tx.CreateBucketIfNotExists([]byte("STATE"))
 		if err != nil {
 			return fmt.Errorf("could not create STATE bucket: %v", err)
+		}
+
+		// Create VOTES bucket fresh
+		stateBucket.DeleteBucket([]byte("VOTES"))
+		_, err = stateBucket.CreateBucketIfNotExists([]byte("VOTES"))
+		if err != nil {
+			return fmt.Errorf("could not create VOTES bucket: %v", err)
 		}
 
 		// Set the transactionSequence number at 0 if it's not set
@@ -85,6 +92,28 @@ func resetSequence(db *bolt.DB) error {
 
 func addTransaction(db *bolt.DB, tr Transaction) error {
 	err := db.Update(func(tx *bolt.Tx) error {
+
+		// Increase VOTES counts
+		votesBucket := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES"))
+		var currentVotes uint32
+		for index, count := range tr.Votes {
+
+			candidateNumber := uint32(index)
+
+			// We don't have to increase the count for candidates who received no votes
+			if count > 0 {
+				currentVotesByte := votesBucket.Get(uintToBytes(candidateNumber))
+				if currentVotesByte != nil {
+					currentVotes = bytesToUint(currentVotesByte)
+				} else {
+					currentVotes = 0
+				}
+
+				// Update count and store value
+				currentVotes += count
+				votesBucket.Put(uintToBytes(candidateNumber), uintToBytes(currentVotes))
+			}
+		}
 
 		// Retieve and update transaction sequence number
 		trSequenceBytes := tx.Bucket([]byte("STATE")).Get([]byte("transactionSequence"))

@@ -71,14 +71,12 @@ func TestSetGetTransaction(t *testing.T) {
 	}
 	defer db.Close()
 
-	tr := Transaction{"Jonny38275", []uint{1, 2, 3, 5, 8}}
+	tr := Transaction{"Jonny38275", []uint32{1, 2, 3, 5, 8}}
 
 	err = addTransaction(db, tr)
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println("Completed the ADD STEP")
 
 	tr2, err := getTransaction(db, 1)
 	if err != nil {
@@ -91,5 +89,46 @@ func TestSetGetTransaction(t *testing.T) {
 
 	if tr2.Votes[1] != tr.Votes[1] {
 		t.Errorf("Votes[1] doesn't match")
+	}
+}
+
+func TestVoteCountAfterTransaction(t *testing.T) {
+	// Initalize
+	db, err := setupDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	resetSequence(db)
+
+	// Add a transaction
+	tr := Transaction{"Jonny38275", []uint32{1, 123456, 0, 5}}
+	err = addTransaction(db, tr)
+	if err != nil {
+		panic(err)
+	}
+
+	// Retrieve values from STATE.VOTES[0 to 3]
+	v := []uint32{0, 0, 0, 0}
+	err = db.View(func(tx *bolt.Tx) error {
+		votesBucket := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES"))
+		for i := range v {
+			vBytes := votesBucket.Get(uintToBytes(uint32(i)))
+			if vBytes != nil {
+				v[i] = bytesToUint(vBytes)
+			} else {
+				v[i] = 0
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Errorf("View-only Transaction failed")
+	}
+
+	for i := range v {
+		if v[i] != tr.Votes[i] {
+			t.Errorf("Stored vote[%d] as %d, got %d", i, tr.Votes[i], v[i])
+		}
 	}
 }
