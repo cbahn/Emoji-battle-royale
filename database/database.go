@@ -7,7 +7,9 @@ package database
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/boltdb/bolt"
 )
@@ -34,35 +36,99 @@ func uintToBytes(i uint32) []byte {
 }
 
 /* database initialization */
-
-func setupDB() (*bolt.DB, error) {
+func openDB(filename string) (*bolt.DB, error) {
 	db, err := bolt.Open("test.db", 0600, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not open db, %v", err)
+		return nil, fmt.Errorf("could not open db file %s: %v", filename, err)
+	}
+
+	// Check that DB state is correct
+	err = db.View(func(tx *bolt.Tx) error {
+		stateBucket := tx.Bucket([]byte("STATE"))
+		if stateBucket == nil {
+			return fmt.Errorf("STATE bucket does not exist")
+		}
+
+		if nil == stateBucket.Get([]byte("transactionSequence")) {
+			return fmt.Errorf("transactionSequence not set")
+		}
+
+		candidateCountBytes := stateBucket.Get([]byte("candidateCount"))
+		if candidateCountBytes == nil {
+			return fmt.Errorf("candidateCount not set")
+		}
+
+		candidateCount := int(bytesToUint(candidateCountBytes))
+		for i := 0; i < candidateCount; i++ {
+			if nil == stateBucket.Bucket([]byte("VOTES")).Get(uintToBytes(uint32(i))) {
+				return fmt.Errorf("Could not retrieve VOTES[%d]", i)
+			}
+		}
+
+		if nil == tx.Bucket([]byte("TRANSACTIONS")) {
+			return fmt.Errorf("TRANSACTIONS bucket does not exist")
+		}
+		return nil
+	})
+
+	if err != nil {
+		return db, fmt.Errorf("could not open database file %s: %v", filename, err)
+	}
+	return db, nil
+}
+
+func createOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) {
+
+	if !strings.HasSuffix(filename, ".db") {
+		return nil, fmt.Errorf("New database filename must end with .db")
+	}
+
+	// does the database file exist? get rid of it
+	if _, err := os.Stat(filename); err == nil {
+		// DB file already exists. Delete it
+		err = os.Remove(filename)
+		if err != nil {
+			return nil, fmt.Errorf("Could not remove old file %s: %v", filename, err)
+		}
+	} else if os.IsNotExist(err) {
+		// No DB found. we're good to continue
+	} else {
+		return nil, fmt.Errorf("Trouble overwriting %s: %v", filename, err)
+	}
+
+	// Create new database file
+	db, err := bolt.Open(filename, 0600, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not open/create db, %v", err)
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
 
 		// Make STATE bucket
-		stateBucket, err := tx.CreateBucketIfNotExists([]byte("STATE"))
+		stateBucket, err := tx.CreateBucket([]byte("STATE"))
 		if err != nil {
 			return fmt.Errorf("could not create STATE bucket: %v", err)
 		}
 
-		// Create VOTES bucket fresh
-		stateBucket.DeleteBucket([]byte("VOTES"))
-		_, err = stateBucket.CreateBucketIfNotExists([]byte("VOTES"))
+		// Set the transactionSequence number to 0
+		// NOTE: this means that the next transaction created will be 1 and there will never
+		//  be a 0 transaction
+		stateBucket.Put([]byte("transactionSequence"), uintToBytes(0))
+
+		stateBucket.Put([]byte("candidateCount"), uintToBytes(uint32(candidateCount)))
+
+		// Create VOTES bucket
+		votesBucket, err := stateBucket.CreateBucket([]byte("VOTES"))
 		if err != nil {
 			return fmt.Errorf("could not create VOTES bucket: %v", err)
 		}
 
-		// Set the transactionSequence number at 0 if it's not set
-		transactionSequence := stateBucket.Get([]byte("transactionSequence"))
-		if transactionSequence == nil { // if trSeq isn't found..
-			stateBucket.Put([]byte("transactionSequence"), uintToBytes(0)) // ..set to 0..
-		} // ..otherwise leave it alone
+		// Set all vote counts to 0
+		for i := 0; i < candidateCount; i++ {
+			votesBucket.Put(uintToBytes(uint32(i)), uintToBytes(0))
+		}
 
-		// Make TRANSACTIONS bucket
+		// Create TRANSACTIONS bucket
 		_, err = tx.CreateBucketIfNotExists([]byte("TRANSACTIONS"))
 		if err != nil {
 			return fmt.Errorf("could not create TRANSACTIONS bucket: %v", err)
@@ -71,23 +137,9 @@ func setupDB() (*bolt.DB, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not set up buckets, %v", err)
+		return nil, fmt.Errorf("Could not initialize database: %v", err)
 	}
 	return db, nil
-}
-
-func resetSequence(db *bolt.DB) error {
-	// Delete the whole DB bucket
-	err := db.Update(func(tx *bolt.Tx) error {
-
-		// Set the transactionSequence number at 0
-		tx.Bucket([]byte("STATE")).Put([]byte("transactionSequence"), uintToBytes(0))
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("could not reset DB, %v", err)
-	}
-	return nil
 }
 
 func addTransaction(db *bolt.DB, tr Transaction) error {

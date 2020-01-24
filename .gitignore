@@ -2,3 +2,4 @@ webserver
 webserver.exe
 
 *.db
+*.db.lock

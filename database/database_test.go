@@ -2,70 +2,48 @@ package database
 
 import (
 	//	"fmt"
-	"fmt"
+
 	"log"
 	"testing"
 
 	"github.com/boltdb/bolt"
 )
 
-func setupTestDB() (*bolt.DB, error) {
-	// Create database
-	db, err := bolt.Open("testing.db", 0600, nil)
+func TestCreateThenOpenDatabase(t *testing.T) {
+	var databaseName string = "test.db"
+
+	db1, err := createOrOverwriteDB(databaseName, 10)
 	if err != nil {
-		return nil, fmt.Errorf("could not open db, %v", err)
+		t.Errorf("Couldn't create database: %v", err)
 	}
 
-	// Make DB.TRANSACTIONS bucket
-	err = db.Update(func(tx *bolt.Tx) error {
-		root, err := tx.CreateBucketIfNotExists([]byte("DB"))
-		if err != nil {
-			return fmt.Errorf("could not create root bucket: %v", err)
+	db1.Close()
+
+	db2, err := openDB(databaseName)
+	if err != nil {
+		t.Errorf("Could not open database: %v", err)
+	}
+	defer db2.Close()
+
+	err = db2.View(func(tx *bolt.Tx) error {
+		candidate0Byte := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES")).Get(uintToBytes(0))
+
+		if candidate0Byte == nil {
+			t.Errorf("Could not read value of VOTES[0]")
 		}
-		_, err = root.CreateBucketIfNotExists([]byte("TRANSACTIONS"))
-		if err != nil {
-			return fmt.Errorf("could not create weight bucket: %v", err)
+
+		if 0 != int(bytesToUint(candidate0Byte)) {
+			t.Errorf("Newly created VOTES[0] expected 0, has %d", int(bytesToUint((candidate0Byte))))
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not set up buckets, %v", err)
+		t.Errorf("Could not complete view-only transaction: %v", err)
 	}
-
-	fmt.Println("DB Setup Done")
-	return db, nil
-}
-
-func TestSimpleDatabase(t *testing.T) {
-	db, _ := setupTestDB()
-
-	// Add "apple":"good"
-	_ = db.Update(func(tx *bolt.Tx) error {
-		err := tx.Bucket([]byte("DB")).Bucket([]byte("TRANSACTIONS")).Put([]byte("apple"), []byte("good"))
-
-		if err != nil {
-			return fmt.Errorf("could not insert weight: %v", err)
-		}
-		return nil
-	})
-
-	// read value
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("DB")).Bucket([]byte("TRANSACTIONS"))
-		v := b.Get([]byte("apple"))
-
-		if string(v) != "good" {
-			t.Errorf("Expected apple, got %s\n", v)
-		}
-		return nil
-	})
-
 }
 
 func TestSetGetTransaction(t *testing.T) {
-	db, err := setupDB()
-	resetSequence(db)
-
+	db, err := createOrOverwriteDB("test.db", 10)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,12 +72,11 @@ func TestSetGetTransaction(t *testing.T) {
 
 func TestVoteCountAfterTransaction(t *testing.T) {
 	// Initalize
-	db, err := setupDB()
+	db, err := createOrOverwriteDB("test.db", 10)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	resetSequence(db)
 
 	// Add a transaction
 	tr := Transaction{"Jonny38275", []uint32{1, 123456, 0, 5}}
