@@ -105,6 +105,25 @@ type Route struct {
 	method string
 }
 
+// FileServeHandler hhh
+// Example: "res/pic", `^/res/pic/(\w+\.\w+)$`
+func FileServeHandler(path string, regexMatch string) func(http.ResponseWriter, *http.Request) {
+	return func(response http.ResponseWriter, request *http.Request) {
+		var resURL = regexp.MustCompile(regexMatch)
+		var resource = resURL.FindStringSubmatch(request.URL.Path)
+		// resource is captured regex matches i.e. ["/res/file.txt", "file.txt"]
+
+		if len(resource) == 0 { // If url could not be parsed, send 404
+			fmt.Println("Could not parse /res request:", request.URL.Path)
+			http.Error(response, "404 page not found", 404)
+			return
+		}
+
+		// Everything's good, serve up the file
+		http.ServeFile(response, request, filepath.Join(path, resource[1]))
+	}
+}
+
 // SetRoutes converts a struct of route info into the mux.Router used by gorillamux
 func SetRoutes(routes []Route) *mux.Router {
 	mux := mux.NewRouter()
@@ -122,7 +141,7 @@ func main() {
 		Route{"/vote", VoteGETHandler, "GET"},
 		Route{"/vote", VotePOSTHandler, "POST"},
 		Route{"/res/{resource}", ResHandler, "GET"},
-		Route{"/res/pic/{picture}", PicHandler, "GET"},
+		Route{"/res/pic/{picture}", FileServeHandler("res/pic", `^/res/pic/(\w+\.\w+)$`), "GET"},
 		Route{"/", HomeHandler, "GET"},
 	}
 
