@@ -69,3 +69,26 @@ func TestGetEliminations(t *testing.T) {
 		}
 	}
 }
+
+/*
+// TestTriggers isn't really a good test because it requires real-time to complete it
+// I'm not sure of a good way to redo the
+func TestTriggers(t *testing.T) {
+	now := time.Now()
+	sch := Schedule{
+		startTime:            now.Add(1 * time.Second),
+		endTime:              now.Add(11 * time.Second),
+		numberOfEliminations: 17,
+	}
+
+	c := make(chan bool, 100)
+
+	sch.TriggerChangeOccurs(c)
+
+	chanOpen := true
+	for chanOpen {
+		chanOpen = <-c
+		fmt.Printf("-- %s\n", time.Now().Format(time.RFC3339))
+	}
+}
+*/
