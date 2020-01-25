@@ -105,7 +105,7 @@ type Route struct {
 	method string
 }
 
-// SetRoutes simplifies setting routes so we can load them up from a struct
+// SetRoutes converts a struct of route info into the mux.Router used by gorillamux
 func SetRoutes(routes []Route) *mux.Router {
 	mux := mux.NewRouter()
 	for _, v := range routes {
@@ -114,19 +114,8 @@ func SetRoutes(routes []Route) *mux.Router {
 	return mux
 }
 
-/*
-
-	mux.Handle("/about", http.HandlerFunc(AboutHandler)).Methods("GET")
-	mux.Handle("/vote", http.HandlerFunc(VoteGETHandler)).Methods("GET")
-	mux.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
-	mux.Handle("/res/{resource}", http.HandlerFunc(ResHandler)).Methods("GET")
-	mux.Handle("/res/pic/{picture}", http.HandlerFunc(PicHandler)).Methods("GET")
-	mux.Handle("/", http.HandlerFunc(HomeHandler)).Methods("GET")
-*/
-
 func main() {
 	port := 8097
-	portstring := strconv.Itoa(port)
 
 	routes := []Route{
 		Route{"/about", AboutHandler, "GET"},
@@ -137,9 +126,8 @@ func main() {
 		Route{"/", HomeHandler, "GET"},
 	}
 
-	// Start listing on a given port with these routes on this server.
-	log.Print("Listening on port " + portstring + " ... ")
-	err := http.ListenAndServe(":"+portstring, SetRoutes(routes))
+	log.Print("Listening on port " + strconv.Itoa(port) + " ... ")
+	err := http.ListenAndServe(":"+strconv.Itoa(port), SetRoutes(routes))
 	if err != nil {
 		log.Fatal("ListenAndServe error: ", err)
 	}
