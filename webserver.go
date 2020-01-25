@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -20,29 +19,6 @@ import (
 func SetMyCookie(response http.ResponseWriter) {
 	cookie := http.Cookie{Name: "testcookiename", Value: "testcookievalue"}
 	http.SetCookie(response, &cookie)
-}
-
-// GenericHandler respond to URLs of the form /generic/...
-func GenericHandler(response http.ResponseWriter, request *http.Request) {
-
-	// Set cookie and MIME type in the HTTP headers.
-	SetMyCookie(response)
-	response.Header().Set("Content-type", "text/plain")
-
-	// Parse URL and POST data into the request.Form
-	err := request.ParseForm()
-	if err != nil {
-		http.Error(response, fmt.Sprintf("error parsing url %v", err), 500)
-	}
-
-	// Send the text diagnostics to the client.
-	fmt.Fprint(response, "FooWebHandler says ... \n")
-	fmt.Fprintf(response, " request.Method     '%v'\n", request.Method)
-	fmt.Fprintf(response, " request.RequestURI '%v'\n", request.RequestURI)
-	fmt.Fprintf(response, " request.URL.Path   '%v'\n", request.URL.Path)
-	fmt.Fprintf(response, " request.Form       '%v'\n", request.Form)
-	fmt.Fprintf(response, " request.Cookies()  '%v'\n", request.Cookies())
-	fmt.Fprintf(response, " request.RemoteAddr '%v'\n", request.RemoteAddr)
 }
 
 // AboutHandler servers up the about page. Probably isn't nessesary :-\
@@ -66,24 +42,7 @@ func VoteGETHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, "vote.html")
 }
 
-// A utility function for converting the request.Body into a string->string map.
-// This is pretty fragile. If the json has a non-string type in it then the marshall fails.
-func jsonReaderToMap(jsonReader io.ReadCloser) (map[string]string, error) {
-	jsonBytes, err := ioutil.ReadAll(jsonReader)
-	if err != nil {
-		// What could possibilty go wrong with this conversion?
-		panic(err)
-	}
-
-	jsonMap := make(map[string]string)
-	err = json.Unmarshal(jsonBytes, &jsonMap)
-
-	// Whatever the error was, return it
-	// They gotta deal with that shit upstream
-	return jsonMap, err
-}
-
-// VoteMessage struct
+// VoteMessage struct, as is sent by the client as a json file
 type VoteMessage struct {
 	ID    string `json:"Id"`
 	Votes []uint `json:"Votes"`
@@ -139,6 +98,22 @@ func PicHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, filepath.Join(resourceFolder, resource[1]))
 }
 
+// Route for a request matching path and method
+type Route struct {
+	path   string
+	f      func(http.ResponseWriter, *http.Request)
+	method string
+}
+
+// SetRoutes ..
+func SetRoutes(routes []Route) *mux.Router {
+	mux := mux.NewRouter()
+	for _, v := range routes {
+		mux.Handle(v.path, http.HandlerFunc(v.f)).Methods(v.method)
+	}
+	return mux
+}
+
 func main() {
 	port := 8097
 	portstring := strconv.Itoa(port)
@@ -147,12 +122,11 @@ func main() {
 	// it's not garbage like the default one.
 	mux := mux.NewRouter()
 
-	mux.Handle("/generic/", http.HandlerFunc(GenericHandler))
-	mux.Handle("/about", http.HandlerFunc(AboutHandler))
+	mux.Handle("/about", http.HandlerFunc(AboutHandler)).Methods("GET")
 	mux.Handle("/vote", http.HandlerFunc(VoteGETHandler)).Methods("GET")
 	mux.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
-	mux.Handle("/res/{resource}", http.HandlerFunc(ResHandler))
-	mux.Handle("/res/pic/{picture}", http.HandlerFunc(PicHandler))
+	mux.Handle("/res/{resource}", http.HandlerFunc(ResHandler)).Methods("GET")
+	mux.Handle("/res/pic/{picture}", http.HandlerFunc(PicHandler)).Methods("GET")
 	mux.Handle("/", http.HandlerFunc(HomeHandler)).Methods("GET")
 
 	// Start listing on a given port with these routes on this server.
