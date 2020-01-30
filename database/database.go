@@ -16,7 +16,7 @@ import (
 
 // Transaction type
 type Transaction struct {
-	UserID string `json:"UserID"`
+	UserID string `json:"Id"`
 	// TimeStamp TimeDate
 	Votes []uint32 `json:"Votes"`
 }
@@ -142,6 +142,7 @@ func CreateOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) 
 	return db, nil
 }
 
+// AddTransaction increases the VOTES count and adds the transaction to the TRANSACTIONS record
 func AddTransaction(db *bolt.DB, tr Transaction) error {
 	err := db.Update(func(tx *bolt.Tx) error {
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Emoji-battle-royale/database"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +10,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+
+	"github.com/boltdb/bolt"
 
 	//	"time"
 	//	"./database"
@@ -53,13 +56,17 @@ type VoteMessage struct {
 // VotePOSTHandler This recieves votes as POST requests to /vote and records them to the database
 func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 
-	votes := VoteMessage{}
+	votes := database.Transaction{}
 	err := json.NewDecoder(request.Body).Decode(&votes)
 	if err != nil {
-		panic(err) // IdIoMaTiC gO eRrOr HaNdLiNg
+		fmt.Println("Unable to parse transaction:", request.Body)
+		http.Error(response, "422 unable to parse input", 422)
+		return
 	}
 
-	fmt.Println(votes.ID, votes.Votes)
+	database.AddTransaction(db, votes)
+	// getvotes, _ := database.GetVotes(db)
+	// fmt.Println(getvotes)
 }
 
 // ResHandler loads up files from the /res folder
@@ -126,8 +133,8 @@ func FileServeHandler(path string, regexMatch string) func(http.ResponseWriter, 
 	}
 }
 
-// SetRoutes converts a struct of route info into the mux.Router used by gorillamux
-func SetRoutes(routes []Route) *mux.Router {
+// CreateRouter converts a struct of route info into the mux.Router used by gorillamux
+func CreateRouter(routes []Route) *mux.Router {
 	mux := mux.NewRouter()
 	for _, v := range routes {
 		mux.Handle(v.path, http.HandlerFunc(v.f)).Methods(v.method)
@@ -135,8 +142,11 @@ func SetRoutes(routes []Route) *mux.Router {
 	return mux
 }
 
+var db *bolt.DB
+
 func main() {
 	port := 8097
+	candidateCount := 50
 
 	routes := []Route{
 		Route{"/about", AboutHandler, "GET"},
@@ -147,8 +157,24 @@ func main() {
 		Route{"/", HomeHandler, "GET"},
 	}
 
+	databaseFile := "testing.db"
+	resetDatabaseEachOpen := true
+
+	var err error
+	if resetDatabaseEachOpen {
+		db, err = database.CreateOrOverwriteDB(databaseFile, candidateCount)
+	} else {
+		db, err = database.OpenDB(databaseFile)
+	}
+	if err != nil {
+		panic(err) // could not open database. Unrecoverable error
+	}
+
+	tr := database.Transaction{"Jonny38275", []uint32{1, 2, 3, 5, 8}}
+	database.AddTransaction(db, tr)
+
 	log.Print("Listening on port " + strconv.Itoa(port) + " ... ")
-	err := http.ListenAndServe(":"+strconv.Itoa(port), SetRoutes(routes))
+	err = http.ListenAndServe(":"+strconv.Itoa(port), CreateRouter(routes))
 	if err != nil {
 		log.Fatal("ListenAndServe error: ", err)
 	}
