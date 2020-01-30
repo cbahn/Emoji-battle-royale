@@ -12,14 +12,14 @@ import (
 func TestCreateThenOpenDatabase(t *testing.T) {
 	var databaseName string = "test.db"
 
-	db1, err := createOrOverwriteDB(databaseName, 10)
+	db1, err := CreateOrOverwriteDB(databaseName, 10)
 	if err != nil {
 		t.Errorf("Couldn't create database: %v", err)
 	}
 
 	db1.Close()
 
-	db2, err := openDB(databaseName)
+	db2, err := OpenDB(databaseName)
 	if err != nil {
 		t.Errorf("Could not open database: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestCreateThenOpenDatabase(t *testing.T) {
 }
 
 func TestSetGetTransaction(t *testing.T) {
-	db, err := createOrOverwriteDB("test.db", 10)
+	db, err := CreateOrOverwriteDB("test.db", 10)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestSetGetTransaction(t *testing.T) {
 
 	tr := Transaction{"Jonny38275", []uint32{1, 2, 3, 5, 8}}
 
-	err = addTransaction(db, tr)
+	err = AddTransaction(db, tr)
 	if err != nil {
 		panic(err)
 	}
@@ -72,7 +72,7 @@ func TestSetGetTransaction(t *testing.T) {
 
 func TestVoteCountAfterTransaction(t *testing.T) {
 	// Initalize
-	db, err := createOrOverwriteDB("test.db", 4)
+	db, err := CreateOrOverwriteDB("test.db", 4)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestVoteCountAfterTransaction(t *testing.T) {
 
 	// Add a transaction
 	tr := Transaction{"Jonny38275", []uint32{1, 123456, 0, 5}}
-	err = addTransaction(db, tr)
+	err = AddTransaction(db, tr)
 	if err != nil {
 		panic(err)
 	}
@@ -110,7 +110,7 @@ func TestVoteCountAfterTransaction(t *testing.T) {
 	}
 
 	// 2nd check of the getVotes function
-	v2, err := getVotes(db)
+	v2, err := GetVotes(db)
 
 	for i := range v2 {
 		if v2[i] != tr.Votes[i] {

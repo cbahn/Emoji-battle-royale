@@ -1,5 +1,5 @@
 /* This database code was a lot easier to write with the awesome reference at:
-https://github.com/zupzup/boltdb-example/blob/master/main.go
+https://github.com/zupzup/boltdb-example
 */
 
 package database
@@ -36,7 +36,7 @@ func uintToBytes(i uint32) []byte {
 }
 
 /* database initialization */
-func openDB(filename string) (*bolt.DB, error) {
+func OpenDB(filename string) (*bolt.DB, error) {
 	db, err := bolt.Open("test.db", 0600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not open db file %s: %v", filename, err)
@@ -77,7 +77,7 @@ func openDB(filename string) (*bolt.DB, error) {
 	return db, nil
 }
 
-func createOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) {
+func CreateOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) {
 
 	if !strings.HasSuffix(filename, ".db") {
 		return nil, fmt.Errorf("New database filename must end with .db")
@@ -142,7 +142,7 @@ func createOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) 
 	return db, nil
 }
 
-func addTransaction(db *bolt.DB, tr Transaction) error {
+func AddTransaction(db *bolt.DB, tr Transaction) error {
 	err := db.Update(func(tx *bolt.Tx) error {
 
 		// Increase VOTES counts
@@ -210,7 +210,7 @@ func getTransaction(db *bolt.DB, trNumber uint32) (Transaction, error) {
 	return tr, nil
 }
 
-func getVotes(db *bolt.DB) ([]uint32, error) {
+func GetVotes(db *bolt.DB) ([]uint32, error) {
 
 	var votes []uint32
 
