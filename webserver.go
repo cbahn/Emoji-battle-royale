@@ -65,8 +65,8 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 	}
 
 	database.AddTransaction(db, votes)
-	// getvotes, _ := database.GetVotes(db)
-	// fmt.Println(getvotes)
+	getvotes, _ := database.GetVotes(db)
+	fmt.Println(getvotes)
 }
 
 // ResHandler loads up files from the /res folder
@@ -157,7 +157,7 @@ func main() {
 		Route{"/", HomeHandler, "GET"},
 	}
 
-	databaseFile := "testing.db"
+	databaseFile := "blue.db"
 	resetDatabaseEachOpen := true
 
 	var err error
@@ -166,12 +166,10 @@ func main() {
 	} else {
 		db, err = database.OpenDB(databaseFile)
 	}
+	defer db.Close()
 	if err != nil {
 		panic(err) // could not open database. Unrecoverable error
 	}
-
-	tr := database.Transaction{"Jonny38275", []uint32{1, 2, 3, 5, 8}}
-	database.AddTransaction(db, tr)
 
 	log.Print("Listening on port " + strconv.Itoa(port) + " ... ")
 	err = http.ListenAndServe(":"+strconv.Itoa(port), CreateRouter(routes))

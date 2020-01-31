@@ -37,28 +37,32 @@
 
       // awkward transciption of myData into the vote submission format
       // In the future, we should store the data as an array in the first place
+      anyVotes = false;
       for( var i = 0; i<number_of_candidates; i++ ) {
 
         // I don't like this any more than you do
         var key = "img" + String(i).padStart(2,'0')
         if( key in myData) {
           json_to_send.Votes[i] += myData[key]
+          anyVotes = true;
         }
       }
 
-      $.ajax({
-        url: '/vote',
-        type: 'post',
-        contentType: 'application/json',
-        success: function (data) {
-          $("#the_span").text(data.msg)
-          myData = {};
-        },
-        error: function (request, error) {
-          console.log(" Can't do because: " + error);
-        },
-        data: JSON.stringify(json_to_send)
-      })
+      if( anyVotes ) {
+        $.ajax({
+          url: '/vote',
+          type: 'post',
+          contentType: 'application/json',
+          success: function (data) {
+            $("#the_span").text(data.msg)
+            myData = {};
+          },
+          error: function (request, error) {
+            console.log(" Can't do because: " + error);
+          },
+          data: JSON.stringify(json_to_send)
+        })
+      }
     }
 
     //  send data every 10 seconds
