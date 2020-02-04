@@ -1,0 +1,51 @@
+body {
+  margin: 2vw;
+  /* The background color and font are the same as discords */
+  color: white;
+  background-color: #35383d;
+  font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;
+}
+
+header {
+  height: 20vh;
+}
+
+.gridwrapper {
+  display: grid;
+  grid-template-columns: repeat(10, 11vh);
+  grid-template-rows: repeat(5, 11vh);
+  background-color: #35383d;
+  color: #0000FF;
+  height: 80vh;
+  max-width: 1080px;
+  margin: auto;
+}
+
+.thumb {
+  text-align: center;
+  height: 10vh;
+  width: 10vh;
+  overflow: hidden;
+  background-size: cover;
+  border-radius: 0.0vw;
+}
+.thumb:active {
+   opacity: 0.1; 
+}
+
+
+/* This barContainer stuff can go when we get rid of the loading bar */
+#barContainer {
+  background-color: black;
+  border-radius: 13px;
+  /* (height of inner div) / 2 + padding */
+  padding: 3px;
+}
+
+#barContainer>div {
+  background-color: #7785D8;
+  width: 40%;
+  /* Adjust with JavaScript */
+  height: 20px;
+  border-radius: 10px;
+}

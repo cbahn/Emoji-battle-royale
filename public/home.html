@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Emoji Battle Royale</title>
+
+  <link rel="stylesheet" href="css/main.css_THERES_NO_CSS_YET">
+  <link rel="icon" href="res/favicon.ico">
+
+  <style>
+	input{
+		font-family:"Courier New", Courier, monospace;
+	}
+  </style>
+
+</head>
+<body>
+	<h1>HI THIS IS HOME.html</h1>
+	<h2> Your name is <span id="username_show">???</span>.</h2>
+
+	<form name="nameform" action="javascript:setUsername()">
+		<p>Set Name here <input id="username_input" type="text" maxlength="20" pattern="[A-Za-z0-9 ]+" title="No punctuation please"></p>
+		<input type="submit">
+	</form>
+	<a href="vote">VOTE</a>
+	<a href="about">ABOUT</a>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type='text/javascript'>
+	
+	// https://stackoverflow.com/questions/5639346
+  	function getCookieValue(a) {
+	    var b = document.cookie.match('(^|;)\\s*' + a + '\\s*=\\s*([^;]+)');
+	    return b ? b.pop() : '';
+	}
+
+	function createCookie(name,value,days) {
+		if (days) {
+			var date = new Date();
+			date.setTime(date.getTime()+(days*24*60*60*1000));
+			var expires = "; expires="+date.toGMTString();
+		}
+		else var expires = "";
+		document.cookie = name+"="+value+expires+"; path=/";
+	}
+
+	function setUsername() {
+		var x = $("#username_input").val()
+		createCookie('username',x,10);
+		updateUsernameDisplay();
+	}
+
+	function updateUsernameDisplay() {
+		$("#username_show").text(getCookieValue('username'))
+	}
+
+	updateUsernameDisplay();
+  </script>
+
+
+</body>
+</html>

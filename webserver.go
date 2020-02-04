@@ -19,6 +19,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func ServefileHandler(filename string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filename)
+	})
+}
+
 // SetMyCookie adds a simple cookie to the response
 // Just for testing right now
 func SetMyCookie(response http.ResponseWriter) {
@@ -148,14 +154,23 @@ func main() {
 	port := 8097
 	candidateCount := 50
 
-	routes := []Route{
-		Route{"/about", AboutHandler, "GET"},
-		Route{"/vote", VoteGETHandler, "GET"},
-		Route{"/vote", VotePOSTHandler, "POST"},
-		Route{"/res/{resource}", ResHandler, "GET"},
-		Route{"/res/pic/{picture}", FileServeHandler("res/pic", `^/res/pic/(\w+\.\w+)$`), "GET"},
-		Route{"/", HomeHandler, "GET"},
-	}
+	/*
+		routes := []Route{
+			Route{"/about", ServefileHandler("about.html"), "GET"},
+			Route{"/vote", VoteGETHandler, "GET"},
+			Route{"/vote", VotePOSTHandler, "POST"},
+			Route{"/res/{resource}", ResHandler, "GET"},
+			Route{"/res/pic/{picture}", FileServeHandler("res/pic", `^/res/pic/(\w+\.\w+)$`), "GET"},
+			Route{"/", HomeHandler, "GET"},
+		}*/
+
+	mux := mux.NewRouter()
+	mux.Handle("/about", ServefileHandler("about.html")).Methods("GET")
+	mux.Handle("/vote", ServefileHandler("vote.html")).Methods("GET")
+	mux.Handle("/res/{resource}", http.HandlerFunc(ResHandler)).Methods("GET")
+	mux.Handle("/res/pic/{picture}", http.HandlerFunc(FileServeHandler("res/pic", `^/res/pic/(\w+\.\w+)$`))).Methods("GET")
+	mux.Handle("/", ServefileHandler("home.html")).Methods("GET")
+	mux.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
 
 	databaseFile := "blue.db"
 	resetDatabaseEachOpen := true
@@ -172,7 +187,7 @@ func main() {
 	}
 
 	log.Print("Listening on port " + strconv.Itoa(port) + " ... ")
-	err = http.ListenAndServe(":"+strconv.Itoa(port), CreateRouter(routes))
+	err = http.ListenAndServe(":"+strconv.Itoa(port), mux)
 	if err != nil {
 		log.Fatal("ListenAndServe error: ", err)
 	}
