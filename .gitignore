@@ -1,5 +1,7 @@
-webserver
-webserver.exe
+*.exe
 
+dat/
 *.db
 *.db.lock
+
+public/res/pic/
