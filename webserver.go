@@ -4,7 +4,6 @@ import (
 	"Emoji-battle-royale/database"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -14,14 +13,14 @@ import (
 	"github.com/boltdb/bolt"
 
 	//	"time"
-	//	"./database"
 
 	"github.com/gorilla/mux"
 )
 
-func ServefileHandler(filename string) http.Handler {
+func ServeFileHandler(filename string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filename)
+		fileDirectory := "public"
+		http.ServeFile(w, r, fileDirectory+"/"+filename)
 	})
 }
 
@@ -30,22 +29,6 @@ func ServefileHandler(filename string) http.Handler {
 func SetMyCookie(response http.ResponseWriter) {
 	cookie := http.Cookie{Name: "testcookiename", Value: "testcookievalue"}
 	http.SetCookie(response, &cookie)
-}
-
-// AboutHandler servers up the about page. Probably isn't nessesary :-\
-func AboutHandler(response http.ResponseWriter, request *http.Request) {
-	http.ServeFile(response, request, "about.html")
-}
-
-// HomeHandler respond to the URL /home with an html home page
-func HomeHandler(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-type", "text/html")
-	webpage, err := ioutil.ReadFile("home.html")
-	if err != nil {
-		http.Error(response, fmt.Sprintf("home.html file error %v", err), 500)
-	}
-	fmt.Fprint(response, string(webpage))
-	fmt.Println("Sent response to /home")
 }
 
 // VoteGETHandler serves the vote.html file
@@ -94,25 +77,6 @@ func ResHandler(response http.ResponseWriter, request *http.Request) {
 	http.ServeFile(response, request, filepath.Join(resourceFolder, resource[1]))
 }
 
-// PicHandler loads up files from the /res/pic folder
-// WARNING - ALL FILES IN THAT FOLDER WILL BE PUBLIC
-func PicHandler(response http.ResponseWriter, request *http.Request) {
-	resourceFolder := "res/pic"
-	// Only resources with characters from a-z, A-Z, 0-9, and the _ (underscore) character will be valid.
-	var resURL = regexp.MustCompile(`^/res/pic/(\w+\.\w+)$`)
-	var resource = resURL.FindStringSubmatch(request.URL.Path)
-	// resource is captured regex matches i.e. ["/res/file.txt", "file.txt"]
-
-	if len(resource) == 0 { // If url could not be parsed, send 404
-		fmt.Println("Could not parse /res request:", request.URL.Path)
-		http.Error(response, "404 page not found", 404)
-		return
-	}
-
-	// Everything's good, serve up the file
-	http.ServeFile(response, request, filepath.Join(resourceFolder, resource[1]))
-}
-
 // Route for a request matching path and method
 type Route struct {
 	path   string
@@ -139,14 +103,7 @@ func FileServeHandler(path string, regexMatch string) func(http.ResponseWriter, 
 	}
 }
 
-// CreateRouter converts a struct of route info into the mux.Router used by gorillamux
-func CreateRouter(routes []Route) *mux.Router {
-	mux := mux.NewRouter()
-	for _, v := range routes {
-		mux.Handle(v.path, http.HandlerFunc(v.f)).Methods(v.method)
-	}
-	return mux
-}
+/***** MAIN *****/
 
 var db *bolt.DB
 
@@ -154,22 +111,12 @@ func main() {
 	port := 8097
 	candidateCount := 50
 
-	/*
-		routes := []Route{
-			Route{"/about", ServefileHandler("about.html"), "GET"},
-			Route{"/vote", VoteGETHandler, "GET"},
-			Route{"/vote", VotePOSTHandler, "POST"},
-			Route{"/res/{resource}", ResHandler, "GET"},
-			Route{"/res/pic/{picture}", FileServeHandler("res/pic", `^/res/pic/(\w+\.\w+)$`), "GET"},
-			Route{"/", HomeHandler, "GET"},
-		}*/
-
 	mux := mux.NewRouter()
-	mux.Handle("/about", ServefileHandler("about.html")).Methods("GET")
-	mux.Handle("/vote", ServefileHandler("vote.html")).Methods("GET")
-	mux.Handle("/res/{resource}", http.HandlerFunc(ResHandler)).Methods("GET")
+	mux.Handle("/about", ServeFileHandler("about.html")).Methods("GET")
+	mux.Handle("/vote", ServeFileHandler("vote.html")).Methods("GET")
+	mux.PathPrefix("/res/").Handler(http.StripPrefix("/res/", http.FileServer(http.Dir("public/res"))))
 	mux.Handle("/res/pic/{picture}", http.HandlerFunc(FileServeHandler("res/pic", `^/res/pic/(\w+\.\w+)$`))).Methods("GET")
-	mux.Handle("/", ServefileHandler("home.html")).Methods("GET")
+	mux.Handle("/", ServeFileHandler("home.html")).Methods("GET")
 	mux.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
 
 	databaseFile := "blue.db"
