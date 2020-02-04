@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
-	"regexp"
-	"strconv"
+	"time"
 
 	"github.com/boltdb/bolt"
 
@@ -21,6 +19,7 @@ import (
 func ServeSingleFileHandler(filename string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fileDirectory := "public"
+		//log.Printf("About to serve %s\n", fileDirectory+"/"+filename)
 		http.ServeFile(w, r, fileDirectory+"/"+filename)
 	})
 }
@@ -54,41 +53,14 @@ type Route struct {
 	method string
 }
 
-// FileServeHandler hhh
-// Example: "res/pic", `^/res/pic/(\w+\.\w+)$`
-func FileServeHandler(path string, regexMatch string) func(http.ResponseWriter, *http.Request) {
-	return func(response http.ResponseWriter, request *http.Request) {
-		var resURL = regexp.MustCompile(regexMatch)
-		var resource = resURL.FindStringSubmatch(request.URL.Path)
-		// resource is captured regex matches i.e. ["/res/file.txt", "file.txt"]
-
-		if len(resource) == 0 { // If url could not be parsed, send 404
-			fmt.Println("Could not parse /res request:", request.URL.Path)
-			http.Error(response, "404 page not found", 404)
-			return
-		}
-
-		// Everything's good, serve up the file
-		http.ServeFile(response, request, filepath.Join(path, resource[1]))
-	}
-}
-
 /***** MAIN *****/
 
 var db *bolt.DB
 
 func main() {
-	port := 8097
 	candidateCount := 50
 
-	mux := mux.NewRouter()
-	mux.Handle("/about", ServeSingleFileHandler("about.html")).Methods("GET")
-	mux.Handle("/vote", ServeSingleFileHandler("vote.html")).Methods("GET")
-	mux.PathPrefix("/res/").Handler(http.StripPrefix("/res/", http.FileServer(http.Dir("public/res"))))
-	mux.Handle("/", ServeSingleFileHandler("home.html")).Methods("GET")
-	mux.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
-
-	databaseFile := "blue.db"
+	databaseFile := "blue.db" //Todo, move this to dat/
 	resetDatabaseEachOpen := true
 
 	var err error
@@ -102,9 +74,21 @@ func main() {
 		panic(err) // could not open database. Unrecoverable error
 	}
 
-	log.Print("Listening on port " + strconv.Itoa(port) + " ... ")
-	err = http.ListenAndServe(":"+strconv.Itoa(port), mux)
-	if err != nil {
-		log.Fatal("ListenAndServe error: ", err)
+	r := mux.NewRouter()
+	r.Handle("/about", ServeSingleFileHandler("about.html")).Methods("GET")
+	r.Handle("/vote", ServeSingleFileHandler("vote.html")).Methods("GET")
+	r.PathPrefix("/res/").Handler(http.StripPrefix("/res/", http.FileServer(http.Dir("public/res"))))
+	r.Handle("/", ServeSingleFileHandler("home.html")).Methods("GET")
+	r.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")
+
+	port := "8080"
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         "127.0.0.1:" + port,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
+
+	log.Print("Listening on port " + port + " ... ")
+	log.Fatal(srv.ListenAndServe())
 }
