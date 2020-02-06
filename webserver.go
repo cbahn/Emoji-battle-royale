@@ -56,11 +56,15 @@ type Route struct {
 /***** MAIN *****/
 
 var db *bolt.DB
+var candidateCount int
+
+// var eliminationCount int
+// var phase Phase // this is an enum with value Before, During, or After
 
 func main() {
-	candidateCount := 50
+	candidateCount = 50 // Eventually, this will be set by the initializer
 
-	databaseFile := "blue.db" //Todo, move this to dat/
+	databaseFile := "blue.db" //TODO: move the database file into a separate folder
 	resetDatabaseEachOpen := true
 
 	var err error
