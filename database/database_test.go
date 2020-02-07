@@ -1,120 +1,118 @@
 package database
 
 import (
-	//	"fmt"
-
-	"log"
 	"testing"
-
-	"github.com/boltdb/bolt"
 )
 
-func TestCreateThenOpenDatabase(t *testing.T) {
-	var databaseName string = "test.db"
+func TestAddTransactions(t *testing.T) {
+	var databaseName string = "TestAddTransactions.db"
 
 	db1, err := CreateOrOverwriteDB(databaseName, 10)
 	if err != nil {
 		t.Errorf("Couldn't create database: %v", err)
 	}
 
-	db1.Close()
+	db1.InitializeCandidates([]string{"ted", "jeb", "hil"})
 
-	db2, err := OpenDB(databaseName)
-	if err != nil {
-		t.Errorf("Could not open database: %v", err)
+	t1 := Transaction{
+		userID: "jonny",
+		votes: Votes{
+			"ted": 7,
+			"jeb": 15,
+		},
 	}
-	defer db2.Close()
 
-	err = db2.View(func(tx *bolt.Tx) error {
-		candidate0Byte := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES")).Get(uintToBytes(0))
+	t2 := Transaction{
+		userID: "billy",
+		votes: Votes{
+			"jeb": 70,
+			"hil": 153,
+		},
+	}
 
-		if candidate0Byte == nil {
-			t.Errorf("Could not read value of VOTES[0]")
+	if err := db1.StoreTransaction(t1); err != nil {
+		t.Errorf("Error adding transaction 1: %v", err)
+	}
+
+	if err := db1.StoreTransaction(t2); err != nil {
+		t.Errorf("Error adding transaction 2: %v", err)
+	}
+
+	if len(db1.GetAllTransactions()) != 2 {
+		t.Errorf("Expected 2 transactions, got %d", len(db1.GetAllTransactions()))
+	}
+
+	receivedVotes := db1.GetVotes()
+	expectedVotes := Votes{
+		"ted": 7,
+		"jeb": 15 + 70,
+		"hil": 153,
+	}
+	for can, vo := range expectedVotes {
+		if receivedVotes[can] != vo {
+			t.Errorf("Expected %s to have %d votes, got %d", can, vo, receivedVotes[can])
 		}
-
-		if 0 != int(bytesToUint(candidate0Byte)) {
-			t.Errorf("Newly created VOTES[0] expected 0, has %d", int(bytesToUint((candidate0Byte))))
-		}
-		return nil
-	})
-	if err != nil {
-		t.Errorf("Could not complete view-only transaction: %v", err)
 	}
 }
 
-func TestSetGetTransaction(t *testing.T) {
-	db, err := CreateOrOverwriteDB("test.db", 10)
+func TestInvalidTransaction(t *testing.T) {
+	var databaseName string = "TestInvalidTransactions.db"
+
+	db1, err := CreateOrOverwriteDB(databaseName, 10)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	tr := Transaction{"Jonny38275", []uint32{1, 2, 3, 5, 8}}
-
-	err = AddTransaction(db, tr)
-	if err != nil {
-		panic(err)
+		t.Errorf("Couldn't create database: %v", err)
 	}
 
-	tr2, err := getTransaction(db, 1)
-	if err != nil {
-		panic(err)
-	}
+	db1.InitializeCandidates([]string{"ted", "jeb", "hil"})
 
-	if tr.UserID != tr2.UserID {
-		t.Errorf("Expected Jonny38275, got %s", tr2.UserID)
-	}
-
-	if tr2.Votes[1] != tr.Votes[1] {
-		t.Errorf("Votes[1] doesn't match")
-	}
-}
-
-func TestVoteCountAfterTransaction(t *testing.T) {
-	// Initalize
-	db, err := CreateOrOverwriteDB("test.db", 4)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	// Add a transaction
-	tr := Transaction{"Jonny38275", []uint32{1, 123456, 0, 5}}
-	err = AddTransaction(db, tr)
-	if err != nil {
-		panic(err)
-	}
-
-	// Retrieve values from STATE.VOTES[0 to 3]
-	v := []uint32{0, 0, 0, 0}
-	err = db.View(func(tx *bolt.Tx) error {
-		votesBucket := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES"))
-		for i := range v {
-			vBytes := votesBucket.Get(uintToBytes(uint32(i)))
-			if vBytes != nil {
-				v[i] = bytesToUint(vBytes)
-			} else {
-				v[i] = 0
-			}
-		}
-		return nil
+	err = db1.StoreTransaction(Transaction{
+		userID: "jonny",
+		votes: Votes{
+			"ted": 7,
+			"jeb": 15,
+		},
 	})
 	if err != nil {
-		t.Errorf("View-only Transaction failed")
+		t.Errorf("Could not store jonny's valid transaction")
 	}
 
-	for i := range v {
-		if v[i] != tr.Votes[i] {
-			t.Errorf("Stored vote[%d] as %d, got %d", i, tr.Votes[i], v[i])
-		}
+	_ = db1.EliminateCandidate("jeb") // Please clap
+
+	err = db1.StoreTransaction(Transaction{
+		userID: "billy",
+		votes: Votes{
+			"jeb": 70,
+			"hil": 153,
+		},
+	})
+	if err == nil {
+		t.Errorf("No error when storing invalid transaction 1")
 	}
 
-	// 2nd check of the getVotes function
-	v2, err := GetVotes(db)
+	err = db1.StoreTransaction(Transaction{
+		userID: "billy",
+		votes: Votes{
+			"ted":      1,
+			"Ron Paul": 999,
+		},
+	})
+	if err == nil {
+		t.Errorf("No error when storing invalid transaction 2")
+	}
 
-	for i := range v2 {
-		if v2[i] != tr.Votes[i] {
-			t.Errorf("Stored vote2[%d] as %d, got %d", i, tr.Votes[i], v[i])
+	if len(db1.GetAllTransactions()) != 1 {
+		t.Errorf("Expected 1 transactions, got %d", len(db1.GetAllTransactions()))
+	}
+
+	receivedVotes := db1.GetVotes()
+	expectedVotes := Votes{
+		"ted": 7,
+		"jeb": 15,
+		"hil": 0,
+	}
+	for can, vo := range expectedVotes {
+		if receivedVotes[can] != vo {
+			t.Errorf("Expected %s to have %d votes, got %d", can, vo, receivedVotes[can])
 		}
 	}
 }

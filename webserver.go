@@ -1,16 +1,18 @@
 package main
 
 import (
+	"Emoji-battle-royale/config"
 	"Emoji-battle-royale/database"
+	"Emoji-battle-royale/scheduler"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/boltdb/bolt"
-
 	//	"time"
+
+	//"github.com/BurntSushi/toml"
 
 	"github.com/gorilla/mux"
 )
@@ -24,63 +26,67 @@ func ServeSingleFileHandler(filename string) http.Handler {
 	})
 }
 
-// VoteMessage struct, as is sent by the client as a json file
-type VoteMessage struct {
-	ID    string `json:"Id"`
-	Votes []uint `json:"Votes"`
-}
-
 // VotePOSTHandler This recieves votes as POST requests to /vote and records them to the database
 func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 
-	votes := database.Transaction{}
-	err := json.NewDecoder(request.Body).Decode(&votes)
+	t := database.Transaction{}
+	err := json.NewDecoder(request.Body).Decode(&t)
 	if err != nil {
 		fmt.Println("Unable to parse transaction:", request.Body)
 		http.Error(response, "422 unable to parse input", 422)
 		return
 	}
 
-	database.AddTransaction(db, votes)
-	getvotes, _ := database.GetVotes(db)
-	fmt.Println(getvotes)
+	db.StoreTransaction(t)
 }
 
-// Route for a request matching path and method
-type Route struct {
-	path   string
-	f      func(http.ResponseWriter, *http.Request)
-	method string
+// VoteGETHandler returns a vote page based on the current phase
+func VoteGETHandler(sched scheduler.Schedule) http.Handler {
+	switch phase := sched.GetPhase(); phase {
+	case scheduler.Before:
+		return ServeSingleFileHandler("vote_before.html")
+	case scheduler.During:
+		return ServeSingleFileHandler("vote_during.html")
+	case scheduler.After:
+		return ServeSingleFileHandler("vote_after.html")
+	}
+	return http.NotFoundHandler()
 }
+
+/***** GLOBAL VARIABLES *****/
+
+var db *database.Store
 
 /***** MAIN *****/
 
-var db *bolt.DB
-var candidateCount int
-
-// var eliminationCount int
-// var phase Phase // this is an enum with value Before, During, or After
-
 func main() {
-	candidateCount = 50 // Eventually, this will be set by the initializer
+
+	configFile := "example_config.toml"
+
+	conf, err := config.LoadConfig(configFile)
+	if err != nil {
+		log.Fatal("Unable to load config")
+	}
+
+	fmt.Printf("name: %s", conf.ElectionName)
 
 	databaseFile := "blue.db" //TODO: move the database file into a separate folder
-	resetDatabaseEachOpen := true
 
-	var err error
+	resetDatabaseEachOpen := true
 	if resetDatabaseEachOpen {
-		db, err = database.CreateOrOverwriteDB(databaseFile, candidateCount)
+		db, err = database.CreateOrOverwriteDB(databaseFile)
 	} else {
 		db, err = database.OpenDB(databaseFile)
 	}
 	defer db.Close()
+
 	if err != nil {
 		panic(err) // could not open database. Unrecoverable error
 	}
 
 	r := mux.NewRouter()
 	r.Handle("/about", ServeSingleFileHandler("about.html")).Methods("GET")
-	r.Handle("/vote", ServeSingleFileHandler("vote.html")).Methods("GET")
+	r.Handle("/vote", ServeSingleFileHandler("vote_before.html")).Methods("GET")
 	r.PathPrefix("/res/").Handler(http.StripPrefix("/res/", http.FileServer(http.Dir("public/res"))))
 	r.Handle("/", ServeSingleFileHandler("home.html")).Methods("GET")
 	r.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")

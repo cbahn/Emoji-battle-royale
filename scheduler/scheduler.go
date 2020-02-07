@@ -30,7 +30,8 @@ const (
 	After
 ) // Golang Enum notation is weird
 
-func (sch Schedule) getPhase() Phase {
+// GetPhase returns the current phase of the schedule
+func (sch Schedule) GetPhase() Phase {
 	now := time.Now()
 
 	if now.Before(sch.startTime) {

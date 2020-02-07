@@ -5,38 +5,55 @@ https://github.com/zupzup/boltdb-example
 package database
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/boltdb/bolt"
 )
 
+type Votes map[string]int
+
 // Transaction type
 type Transaction struct {
-	UserID string `json:"Id"`
+	userID string `json:"Id"`
 	// TimeStamp TimeDate
-	Votes []uint32 `json:"Votes"`
+	votes Votes `json:"Votes"`
 }
 
-/* integer storage utilites */
-func bytesToUint(b []byte) uint32 {
-	r, err := strconv.ParseInt(string(b), 10, 32)
-	if err != nil {
-		panic(err)
+type Store struct {
+	db *bolt.DB
+}
+
+var expectedBuckets = [...]string{"TRANSACTIONS", "VOTES", "CANDIDATES"}
+
+// itob returns an 8-byte big endian representation of v.
+func itob(v int) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(v))
+	return b
+}
+
+// btoi converts an 8-byte big endian byte array to an int
+func btoi(b []byte) int {
+	return int(binary.BigEndian.Uint64(b))
+}
+
+func booltobyte(b bool) []byte {
+	if b {
+		return []byte{byte(1)}
 	}
-	return uint32(r)
+	return []byte{byte(0)}
 }
 
-func uintToBytes(i uint32) []byte {
-	str := fmt.Sprintf("%09d", i)
-	return []byte(str)
+func bytetobool(b []byte) bool {
+	return int(b[0]) == 1
 }
 
-/* database initialization */
-func OpenDB(filename string) (*bolt.DB, error) {
+// OpenDB loads a database and verifies that it contains the expected buckets
+func OpenDB(filename string) (*Store, error) {
 	db, err := bolt.Open("test.db", 0600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not open db file %s: %v", filename, err)
@@ -44,40 +61,25 @@ func OpenDB(filename string) (*bolt.DB, error) {
 
 	// Check that DB state is correct
 	err = db.View(func(tx *bolt.Tx) error {
-		stateBucket := tx.Bucket([]byte("STATE"))
-		if stateBucket == nil {
-			return fmt.Errorf("STATE bucket does not exist")
-		}
 
-		if nil == stateBucket.Get([]byte("transactionSequence")) {
-			return fmt.Errorf("transactionSequence not set")
-		}
-
-		candidateCountBytes := stateBucket.Get([]byte("candidateCount"))
-		if candidateCountBytes == nil {
-			return fmt.Errorf("candidateCount not set")
-		}
-
-		candidateCount := int(bytesToUint(candidateCountBytes))
-		for i := 0; i < candidateCount; i++ {
-			if nil == stateBucket.Bucket([]byte("VOTES")).Get(uintToBytes(uint32(i))) {
-				return fmt.Errorf("Could not retrieve VOTES[%d]", i)
+		// Check that exected buckets exist
+		for _, v := range expectedBuckets {
+			if nil == tx.Bucket([]byte(v)) {
+				return fmt.Errorf("%s bucket not found", v)
 			}
 		}
 
-		if nil == tx.Bucket([]byte("TRANSACTIONS")) {
-			return fmt.Errorf("TRANSACTIONS bucket does not exist")
-		}
 		return nil
 	})
 
 	if err != nil {
-		return db, fmt.Errorf("could not open database file %s: %v", filename, err)
+		return &Store{db: db}, fmt.Errorf("could not open database file %s: %v", filename, err)
 	}
-	return db, nil
+	return &Store{db: db}, nil
 }
 
-func CreateOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) {
+// CreateOrOverwriteDB will create a new database or delete and re-create one if the filename already exists
+func CreateOrOverwriteDB(filename string) (*Store, error) {
 
 	if !strings.HasSuffix(filename, ".db") {
 		return nil, fmt.Errorf("New database filename must end with .db")
@@ -104,34 +106,12 @@ func CreateOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) 
 
 	err = db.Update(func(tx *bolt.Tx) error {
 
-		// Make STATE bucket
-		stateBucket, err := tx.CreateBucket([]byte("STATE"))
-		if err != nil {
-			return fmt.Errorf("could not create STATE bucket: %v", err)
-		}
-
-		// Set the transactionSequence number to 0
-		// NOTE: this means that the next transaction created will be 1 and there will never
-		//  be a 0 transaction
-		stateBucket.Put([]byte("transactionSequence"), uintToBytes(0))
-
-		stateBucket.Put([]byte("candidateCount"), uintToBytes(uint32(candidateCount)))
-
-		// Create VOTES bucket
-		votesBucket, err := stateBucket.CreateBucket([]byte("VOTES"))
-		if err != nil {
-			return fmt.Errorf("could not create VOTES bucket: %v", err)
-		}
-
-		// Set all vote counts to 0
-		for i := 0; i < candidateCount; i++ {
-			votesBucket.Put(uintToBytes(uint32(i)), uintToBytes(0))
-		}
-
-		// Create TRANSACTIONS bucket
-		_, err = tx.CreateBucketIfNotExists([]byte("TRANSACTIONS"))
-		if err != nil {
-			return fmt.Errorf("could not create TRANSACTIONS bucket: %v", err)
+		// Create buckets
+		for _, v := range expectedBuckets {
+			_, err := tx.CreateBucket([]byte(v))
+			if err != nil {
+				return fmt.Errorf("Could not create %s bucket: %v", v, err)
+			}
 		}
 
 		return nil
@@ -139,96 +119,134 @@ func CreateOrOverwriteDB(filename string, candidateCount int) (*bolt.DB, error) 
 	if err != nil {
 		return nil, fmt.Errorf("Could not initialize database: %v", err)
 	}
-	return db, nil
+	return &Store{db: db}, nil
 }
 
-// AddTransaction increases the VOTES count and adds the transaction to the TRANSACTIONS record
-func AddTransaction(db *bolt.DB, tr Transaction) error {
-	err := db.Update(func(tx *bolt.Tx) error {
+// Close the database connection
+func (s *Store) Close() {
+	s.db.Close()
+}
 
-		// Increase VOTES counts
-		votesBucket := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES"))
-		var currentVotes uint32
-		for index, count := range tr.Votes {
+// InitializeCandidates populates the CANDIDATES and VOTES buckets
+// WARNING: calling this on an already initialized database will not cause any errors
+func (s *Store) InitializeCandidates(candidates []string) {
+	s.db.Update(func(tx *bolt.Tx) error {
+		bCAN := tx.Bucket([]byte("CANDIDATES"))
+		bVOT := tx.Bucket([]byte("VOTES"))
 
-			candidateNumber := uint32(index)
+		for _, can := range candidates {
+			// Add all candidates to the candidate list and set their value to true
+			bCAN.Put([]byte(can), booltobyte(true))
 
-			// We don't have to increase the count for candidates who received no votes
-			if count > 0 {
-				currentVotesByte := votesBucket.Get(uintToBytes(candidateNumber))
-				if currentVotesByte != nil {
-					currentVotes = bytesToUint(currentVotesByte)
-				} else {
-					currentVotes = 0
-				}
+			// Add all candidates to the vote list and set their number to 0
+			bVOT.Put([]byte(can), itob(0))
+		}
+		return nil
+	})
+}
 
-				// Update count and store value
-				currentVotes += count
-				votesBucket.Put(uintToBytes(candidateNumber), uintToBytes(currentVotes))
+// StoreTransaction saves the transaction to the database
+func (s *Store) StoreTransaction(t Transaction) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		// Retrieve buckets
+		bTRN := tx.Bucket([]byte("TRANSACTIONS"))
+		bCAN := tx.Bucket([]byte("CANDIDATES"))
+		bVOT := tx.Bucket([]byte("VOTES"))
+
+		// Increase the total vote count for each candidate voted for
+		for candidate, voteCount := range t.votes {
+			// Confirm that the candidate exists and is active
+			candidateStatus := bCAN.Get([]byte(candidate))
+			if candidateStatus == nil {
+				return fmt.Errorf("Transaction contains invalid candidate name: %s", candidate)
 			}
+			if !bytetobool(candidateStatus) {
+				return fmt.Errorf("Cannot vote for eliminated candidate %s", candidate)
+			}
+
+			v := bVOT.Get([]byte(candidate))
+			if v == nil {
+				return fmt.Errorf("Transaction contains invalid candidate name: %s", candidate)
+			}
+
+			bVOT.Put([]byte(candidate), itob(voteCount+btoi(v)))
 		}
 
-		// Retieve and update transaction sequence number
-		trSequenceBytes := tx.Bucket([]byte("STATE")).Get([]byte("transactionSequence"))
-		trSequence := bytesToUint(trSequenceBytes)
-		trSequence++
+		// Generate ID for this trasaction
+		// This returns an error only if the Tx is closed or not writeable.
+		// That can't happen in an Update() call so I ignore the error check.
+		id, _ := bTRN.NextSequence()
 
-		// Store transaction
-		transactionBytes, err := json.Marshal(tr)
+		// Marshal transaction into bytes.
+		buf, err := json.Marshal(t)
 		if err != nil {
-			return fmt.Errorf("Unable to marshal transaction, %v", err)
+			return err
 		}
-		tx.Bucket([]byte("TRANSACTIONS")).Put(uintToBytes(trSequence), transactionBytes)
 
-		// Store updated sequence number
-		tx.Bucket([]byte("STATE")).Put([]byte("transactionSequence"), uintToBytes(trSequence))
-
-		return nil
+		// Persist bytes to bucket
+		return bTRN.Put(itob(int(id)), buf)
 	})
-	return err
 }
 
-func getTransaction(db *bolt.DB, trNumber uint32) (Transaction, error) {
-	var bytes []byte
-	var tr Transaction
+// EliminateCandidate turns the CANDIDATES(candidate) value to false
+//  so that they can no longer recieve votes
+func (s *Store) EliminateCandidate(candidate string) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		// Retrieve buckets
+		bCAN := tx.Bucket([]byte("CANDIDATES"))
 
-	err := db.View(func(tx *bolt.Tx) error {
-		bytes = tx.Bucket([]byte("TRANSACTIONS")).Get(uintToBytes(trNumber))
+		c := bCAN.Get([]byte(candidate))
 
-		if bytes == nil { // Could not find key
-			return fmt.Errorf("Unable to find transaction number %09d", trNumber)
+		if c == nil {
+			return fmt.Errorf("Cannot eliminate %s, candidate not found", candidate)
 		}
+
+		if !bytetobool(c) {
+			return fmt.Errorf("Cannot eliminate %s, candidate already eliminted", candidate)
+		}
+
+		bCAN.Put([]byte(candidate), booltobyte(false))
+
 		return nil
 	})
-	if err != nil {
-		return tr, fmt.Errorf("Unable to retrieve transaction, %v", err)
-	}
-
-	err = json.Unmarshal(bytes, &tr)
-	if err != nil {
-		return tr, fmt.Errorf("Could not unmarshal data, %v", err)
-	}
-	return tr, nil
 }
 
-func GetVotes(db *bolt.DB) ([]uint32, error) {
+// GetAllTransactions returns a map of all Transactions by transactionID
+func (s *Store) GetAllTransactions() map[int]Transaction {
+	m := make(map[int]Transaction)
+	var t Transaction
 
-	var votes []uint32
+	s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("TRANSACTIONS"))
 
-	err := db.View(func(tx *bolt.Tx) error {
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
 
-		candidateCount := int(bytesToUint(tx.Bucket([]byte("STATE")).Get([]byte("candidateCount"))))
+			if err := json.Unmarshal(v, &t); err != nil {
+				return fmt.Errorf("Unable to unmarshal transaction %d", btoi(k))
+			}
 
-		votes = make([]uint32, candidateCount)
-
-		votesBucket := tx.Bucket([]byte("STATE")).Bucket([]byte("VOTES"))
-		for i := 0; i < candidateCount; i++ {
-			votes[i] = bytesToUint(votesBucket.Get(uintToBytes(uint32(i))))
+			m[btoi(k)] = t
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, fmt.Errorf("View transaction failed")
-	}
-	return votes, nil
+	return m
+}
+
+// GetVotes returns a map of current candidates vote totals from all transactions
+func (s *Store) GetVotes() Votes {
+	votes := make(map[string]int)
+
+	s.db.View(func(tx *bolt.Tx) error {
+		bVOT := tx.Bucket([]byte("VOTES"))
+
+		c := bVOT.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			votes[string(k)] = btoi(v)
+		}
+
+		return nil
+	})
+
+	return votes
 }
