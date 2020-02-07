@@ -2,6 +2,7 @@ package main
 
 import (
 	"Emoji-battle-royale/database"
+	"Emoji-battle-royale/scheduler"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -22,12 +23,6 @@ func ServeSingleFileHandler(filename string) http.Handler {
 	})
 }
 
-// VoteMessage struct, as is sent by the client as a json file
-type VoteMessage struct {
-	ID    string `json:"Id"`
-	Votes []uint `json:"Votes"`
-}
-
 // VotePOSTHandler This recieves votes as POST requests to /vote and records them to the database
 func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 
@@ -42,6 +37,19 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 	db.StoreTransaction(t)
 }
 
+// VoteGETHandler returns a vote page based on the current phase
+func VoteGETHandler(sched scheduler.Schedule) http.Handler {
+	switch phase := sched.GetPhase(); phase {
+	case scheduler.Before:
+		return ServeSingleFileHandler("vote_before.html")
+	case scheduler.During:
+		return ServeSingleFileHandler("vote_during.html")
+	case scheduler.After:
+		return ServeSingleFileHandler("vote_after.html")
+	}
+	return http.NotFoundHandler()
+}
+
 /***** GLOBAL VARIABLES *****/
 
 var db *database.Store
@@ -50,9 +58,9 @@ var db *database.Store
 
 func main() {
 	databaseFile := "blue.db" //TODO: move the database file into a separate folder
-	resetDatabaseEachOpen := true
 
 	var err error
+	resetDatabaseEachOpen := true
 	if resetDatabaseEachOpen {
 		db, err = database.CreateOrOverwriteDB(databaseFile)
 	} else {

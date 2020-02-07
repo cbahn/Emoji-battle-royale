@@ -17,7 +17,7 @@ func TestPhase(t *testing.T) {
 		numberOfEliminations: 3,
 	}
 
-	if unstarted.getPhase() != Before {
+	if unstarted.GetPhase() != Before {
 		t.Errorf("unstarted.getPhase() test failed")
 	}
 
@@ -27,7 +27,7 @@ func TestPhase(t *testing.T) {
 		numberOfEliminations: 3,
 	}
 
-	if started.getPhase() != During {
+	if started.GetPhase() != During {
 		t.Errorf("unstarted.getPhase() test failed")
 	}
 
@@ -37,7 +37,7 @@ func TestPhase(t *testing.T) {
 		numberOfEliminations: 3,
 	}
 
-	if ended.getPhase() != After {
+	if ended.GetPhase() != After {
 		t.Errorf("ended.getPhase() test failed")
 	}
 }
