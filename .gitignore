@@ -5,3 +5,4 @@ dat/
 *.db.lock
 
 public/res/pic/
+webserver
