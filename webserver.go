@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/boltdb/bolt"
-
 	//	"time"
 
 	"github.com/gorilla/mux"
@@ -33,54 +31,42 @@ type VoteMessage struct {
 // VotePOSTHandler This recieves votes as POST requests to /vote and records them to the database
 func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 
-	votes := database.Transaction{}
-	err := json.NewDecoder(request.Body).Decode(&votes)
+	t := database.Transaction{}
+	err := json.NewDecoder(request.Body).Decode(&t)
 	if err != nil {
 		fmt.Println("Unable to parse transaction:", request.Body)
 		http.Error(response, "422 unable to parse input", 422)
 		return
 	}
 
-	database.AddTransaction(db, votes)
-	getvotes, _ := database.GetVotes(db)
-	fmt.Println(getvotes)
+	db.StoreTransaction(t)
 }
 
-// Route for a request matching path and method
-type Route struct {
-	path   string
-	f      func(http.ResponseWriter, *http.Request)
-	method string
-}
+/***** GLOBAL VARIABLES *****/
+
+var db *database.Store
 
 /***** MAIN *****/
 
-var db *bolt.DB
-var candidateCount int
-
-// var eliminationCount int
-// var phase Phase // this is an enum with value Before, During, or After
-
 func main() {
-	candidateCount = 50 // Eventually, this will be set by the initializer
-
 	databaseFile := "blue.db" //TODO: move the database file into a separate folder
 	resetDatabaseEachOpen := true
 
 	var err error
 	if resetDatabaseEachOpen {
-		db, err = database.CreateOrOverwriteDB(databaseFile, candidateCount)
+		db, err = database.CreateOrOverwriteDB(databaseFile)
 	} else {
 		db, err = database.OpenDB(databaseFile)
 	}
 	defer db.Close()
+
 	if err != nil {
 		panic(err) // could not open database. Unrecoverable error
 	}
 
 	r := mux.NewRouter()
 	r.Handle("/about", ServeSingleFileHandler("about.html")).Methods("GET")
-	r.Handle("/vote", ServeSingleFileHandler("vote.html")).Methods("GET")
+	r.Handle("/vote", ServeSingleFileHandler("vote_before.html")).Methods("GET")
 	r.PathPrefix("/res/").Handler(http.StripPrefix("/res/", http.FileServer(http.Dir("public/res"))))
 	r.Handle("/", ServeSingleFileHandler("home.html")).Methods("GET")
 	r.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")

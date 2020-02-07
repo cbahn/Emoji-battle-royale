@@ -79,7 +79,7 @@ func OpenDB(filename string) (*Store, error) {
 }
 
 // CreateOrOverwriteDB will create a new database or delete and re-create one if the filename already exists
-func CreateOrOverwriteDB(filename string, candidateCount int) (*Store, error) {
+func CreateOrOverwriteDB(filename string) (*Store, error) {
 
 	if !strings.HasSuffix(filename, ".db") {
 		return nil, fmt.Errorf("New database filename must end with .db")
@@ -120,6 +120,11 @@ func CreateOrOverwriteDB(filename string, candidateCount int) (*Store, error) {
 		return nil, fmt.Errorf("Could not initialize database: %v", err)
 	}
 	return &Store{db: db}, nil
+}
+
+// Close the database connection
+func (s *Store) Close() {
+	s.db.Close()
 }
 
 // InitializeCandidates populates the CANDIDATES and VOTES buckets
