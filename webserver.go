@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Emoji-battle-royale/config"
 	"Emoji-battle-royale/database"
 	"Emoji-battle-royale/scheduler"
 	"encoding/json"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	//	"time"
+
+	//"github.com/BurntSushi/toml"
 
 	"github.com/gorilla/mux"
 )
@@ -57,9 +60,18 @@ var db *database.Store
 /***** MAIN *****/
 
 func main() {
+
+	configFile := "example_config.toml"
+
+	conf, err := config.LoadConfig(configFile)
+	if err != nil {
+		log.Fatal("Unable to load config")
+	}
+
+	fmt.Printf("name: %s", conf.ElectionName)
+
 	databaseFile := "blue.db" //TODO: move the database file into a separate folder
 
-	var err error
 	resetDatabaseEachOpen := true
 	if resetDatabaseEachOpen {
 		db, err = database.CreateOrOverwriteDB(databaseFile)

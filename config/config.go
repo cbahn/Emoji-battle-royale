@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"fmt"
@@ -7,25 +7,24 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+// Config defines all program settigs
 type Config struct {
-	Age        int
-	Cats       []string
-	Pi         float64
-	Perfection []int
-	DOB        time.Time
+	ElectionName string
+	DatabaseFile string
+	StartTime    time.Time
+	EndTime      time.Time
+	DiscordKey   string
+}
+
+// LoadConfig creates a new config from a file
+func LoadConfig(filename string) (Config, error) {
+	var conf Config
+	if _, err := toml.DecodeFile(filename, &conf); err != nil {
+		return conf, fmt.Errorf("Unable to load config %s: %v", filename, err)
+	}
+	return conf, nil
 }
 
 func main() {
-	configExample := `Age = 198
-Cats = [ "Cauchy", "Plato" ]
-Pi = 3.14
-Perfection = [ 6, 28, 496, 8128 ]
-DOB = 1987-07-05T05:45:00Z`
-
-	var conf Config
-	if _, err := toml.Decode(configExample, &conf); err != nil {
-		// handle error
-	}
-
-	fmt.Printf("Pi: %f\n", conf.Pi)
+	fmt.Printf("Pi: %f\n", 3.1235235)
 }

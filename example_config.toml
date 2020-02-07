@@ -1,0 +1,9 @@
+
+
+ElectionName = "Example Name"
+DatabaseFile = "example.db"
+
+StartTime = 2010-07-05T05:45:00Z
+EndTime = 2030-07-05T05:45:00Z
+
+DiscordKey = "putkeyhere"
