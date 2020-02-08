@@ -6,8 +6,11 @@ package database
 
 import (
 	"encoding/binary"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -18,9 +21,9 @@ type Votes map[string]int
 
 // Transaction type
 type Transaction struct {
-	userID string `json:"Id"`
+	UserID string `json:"Id"`
 	// TimeStamp TimeDate
-	votes Votes `json:"Votes"`
+	Votes Votes `json:"Votes"`
 }
 
 type Store struct {
@@ -154,7 +157,7 @@ func (s *Store) StoreTransaction(t Transaction) error {
 		bVOT := tx.Bucket([]byte("VOTES"))
 
 		// Increase the total vote count for each candidate voted for
-		for candidate, voteCount := range t.votes {
+		for candidate, voteCount := range t.Votes {
 			// Confirm that the candidate exists and is active
 			candidateStatus := bCAN.Get([]byte(candidate))
 			if candidateStatus == nil {
@@ -182,6 +185,8 @@ func (s *Store) StoreTransaction(t Transaction) error {
 		if err != nil {
 			return err
 		}
+
+		//fmt.Printf("Storing transaction: %s\n", string(buf))
 
 		// Persist bytes to bucket
 		return bTRN.Put(itob(int(id)), buf)
@@ -214,13 +219,15 @@ func (s *Store) EliminateCandidate(candidate string) error {
 // GetAllTransactions returns a map of all Transactions by transactionID
 func (s *Store) GetAllTransactions() map[int]Transaction {
 	m := make(map[int]Transaction)
-	var t Transaction
 
 	s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("TRANSACTIONS"))
 
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
+
+			// It's important that the struct is cleared between each new transaction
+			var t Transaction
 
 			if err := json.Unmarshal(v, &t); err != nil {
 				return fmt.Errorf("Unable to unmarshal transaction %d", btoi(k))
@@ -266,4 +273,41 @@ func (s *Store) GetCandidateList(includeEliminatedCandidates bool) []string {
 		return nil
 	})
 	return candidateList
+}
+
+// ExportAllTransactionsAsCSV will export a complete list of all transactions in CSV format
+// to the writer w
+func (s *Store) ExportAllTransactionsAsCSV(w io.Writer) {
+	candidates := s.GetCandidateList(true)
+
+	header := append([]string{"Transaction Number", "UserId"}, candidates...)
+
+	var data = [][]string{header}
+
+	transactions := s.GetAllTransactions()
+
+	for trasactionNumber, transaction := range transactions {
+		// Start building the line with the Transaction Number and the UserId
+		var line = []string{fmt.Sprintf("%d", trasactionNumber), transaction.UserID}
+
+		for _, can := range candidates {
+
+			if val, ok := transaction.Votes[can]; ok {
+				//Candidate found, set votes
+				line = append(line, fmt.Sprintf("%d", val))
+			} else {
+				// Candidate not found, votes==0
+				line = append(line, "0")
+			}
+		}
+
+		data = append(data, line)
+	}
+
+	csvw := csv.NewWriter(w)
+	csvw.WriteAll(data)
+
+	if err := csvw.Error(); err != nil {
+		log.Fatalln("error writing csv:", err)
+	}
 }

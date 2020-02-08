@@ -1,6 +1,7 @@
 package database
 
 import (
+	"os"
 	"testing"
 )
 
@@ -15,16 +16,16 @@ func TestAddTransactions(t *testing.T) {
 	db1.InitializeCandidates([]string{"ted", "jeb", "hil"})
 
 	t1 := Transaction{
-		userID: "jonny",
-		votes: Votes{
+		UserID: "jonny",
+		Votes: Votes{
 			"ted": 7,
 			"jeb": 15,
 		},
 	}
 
 	t2 := Transaction{
-		userID: "billy",
-		votes: Votes{
+		UserID: "billy",
+		Votes: Votes{
 			"jeb": 70,
 			"hil": 153,
 		},
@@ -53,6 +54,8 @@ func TestAddTransactions(t *testing.T) {
 			t.Errorf("Expected %s to have %d votes, got %d", can, vo, receivedVotes[can])
 		}
 	}
+
+	db1.ExportAllTransactionsAsCSV(os.Stdout) // Export everything to the command line
 }
 
 func TestInvalidTransaction(t *testing.T) {
@@ -66,8 +69,8 @@ func TestInvalidTransaction(t *testing.T) {
 	db1.InitializeCandidates([]string{"ted", "jeb", "hil"})
 
 	err = db1.StoreTransaction(Transaction{
-		userID: "jonny",
-		votes: Votes{
+		UserID: "jonny",
+		Votes: Votes{
 			"ted": 7,
 			"jeb": 15,
 		},
@@ -87,8 +90,8 @@ func TestInvalidTransaction(t *testing.T) {
 	}
 
 	err = db1.StoreTransaction(Transaction{
-		userID: "billy",
-		votes: Votes{
+		UserID: "billy",
+		Votes: Votes{
 			"jeb": 70,
 			"hil": 153,
 		},
@@ -98,8 +101,8 @@ func TestInvalidTransaction(t *testing.T) {
 	}
 
 	err = db1.StoreTransaction(Transaction{
-		userID: "billy",
-		votes: Votes{
+		UserID: "billy",
+		Votes: Votes{
 			"ted":      1,
 			"Ron Paul": 999,
 		},
