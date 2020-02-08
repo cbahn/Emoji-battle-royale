@@ -104,7 +104,10 @@
 
   <header>
     <h1>VOTING PAGE!</h1>
-    <h3>Sending click data...</h1>
+    <h3>Sending click data...</h3>
+    <h3>{{.TitleOrSomething}}</h3>
+
+    <p>Here's a list of candidate names:{{range .Images}}{{ . }} {{end}}</p>
   
   
     <div id="barContainer">

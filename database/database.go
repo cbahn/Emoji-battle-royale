@@ -250,3 +250,20 @@ func (s *Store) GetVotes() Votes {
 
 	return votes
 }
+
+// GetCandidateList returns a list of all candidates
+// if includeEliminatedCandidates is false, only active candidates will be returned
+func (s *Store) GetCandidateList(includeEliminatedCandidates bool) []string {
+	var candidateList []string
+	s.db.View(func(tx *bolt.Tx) error {
+		bCAN := tx.Bucket([]byte("CANDIDATES"))
+		c := bCAN.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			if includeEliminatedCandidates || bytetobool(v) {
+				candidateList = append(candidateList, string(k))
+			}
+		}
+		return nil
+	})
+	return candidateList
+}

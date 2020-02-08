@@ -6,6 +6,7 @@ import (
 	"Emoji-battle-royale/scheduler"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"time"
@@ -42,13 +43,32 @@ func VotePOSTHandler(response http.ResponseWriter, request *http.Request) {
 
 // VoteGETHandler returns a vote page based on the current phase
 func VoteGETHandler(sched scheduler.Schedule) http.Handler {
+
+	type VotePageTemplateData struct {
+		TitleOrSomething string
+		Images           []string
+	}
+
 	switch phase := sched.GetPhase(); phase {
 	case scheduler.Before:
 		return ServeSingleFileHandler("vote_before.html")
-	case scheduler.During:
-		return ServeSingleFileHandler("vote_during.html")
 	case scheduler.After:
 		return ServeSingleFileHandler("vote_after.html")
+	case scheduler.During:
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			// I don't like that the template is read and parsed each time a
+			// request comes in, but I won't worry too much until we have performance issues
+			tmpl := template.Must(template.ParseFiles("public/vote_during.html"))
+
+			data := VotePageTemplateData{
+				TitleOrSomething: "Templates4Ever",
+				Images:           db.GetCandidateList(true),
+			}
+
+			tmpl.Execute(w, data)
+		})
+
 	}
 	return http.NotFoundHandler()
 }
@@ -70,23 +90,27 @@ func main() {
 
 	fmt.Printf("name: %s", conf.ElectionName)
 
-	databaseFile := "blue.db" //TODO: move the database file into a separate folder
-
 	resetDatabaseEachOpen := true
-	if resetDatabaseEachOpen {
-		db, err = database.CreateOrOverwriteDB(databaseFile)
-	} else {
-		db, err = database.OpenDB(databaseFile)
-	}
-	defer db.Close()
 
+	if resetDatabaseEachOpen {
+		db, err = database.CreateOrOverwriteDB(conf.DatabaseFile)
+	} else {
+		db, err = database.OpenDB(conf.DatabaseFile)
+	}
 	if err != nil {
 		panic(err) // could not open database. Unrecoverable error
 	}
+	defer db.Close()
+
+	// FILL DATABASE WITH DUMMY DATA FOR TESTING
+	db.InitializeCandidates([]string{"jeb", "steve", "francis"})
+	numberOfCandidates := 3
+
+	sched := scheduler.CreateSchedule(conf.StartTime, conf.EndTime, numberOfCandidates)
 
 	r := mux.NewRouter()
 	r.Handle("/about", ServeSingleFileHandler("about.html")).Methods("GET")
-	r.Handle("/vote", ServeSingleFileHandler("vote_before.html")).Methods("GET")
+	r.Handle("/vote", VoteGETHandler(sched)).Methods("GET")
 	r.PathPrefix("/res/").Handler(http.StripPrefix("/res/", http.FileServer(http.Dir("public/res"))))
 	r.Handle("/", ServeSingleFileHandler("home.html")).Methods("GET")
 	r.Handle("/vote", http.HandlerFunc(VotePOSTHandler)).Methods("POST")

@@ -7,7 +7,7 @@ import (
 func TestAddTransactions(t *testing.T) {
 	var databaseName string = "TestAddTransactions.db"
 
-	db1, err := CreateOrOverwriteDB(databaseName, 10)
+	db1, err := CreateOrOverwriteDB(databaseName)
 	if err != nil {
 		t.Errorf("Couldn't create database: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestAddTransactions(t *testing.T) {
 func TestInvalidTransaction(t *testing.T) {
 	var databaseName string = "TestInvalidTransactions.db"
 
-	db1, err := CreateOrOverwriteDB(databaseName, 10)
+	db1, err := CreateOrOverwriteDB(databaseName)
 	if err != nil {
 		t.Errorf("Couldn't create database: %v", err)
 	}
@@ -77,6 +77,14 @@ func TestInvalidTransaction(t *testing.T) {
 	}
 
 	_ = db1.EliminateCandidate("jeb") // Please clap
+
+	if len(db1.GetCandidateList(true)) != 3 {
+		t.Errorf("GetCandidateList returned %d results, 3 expected", len(db1.GetCandidateList(true)))
+	}
+
+	if len(db1.GetCandidateList(false)) != 2 {
+		t.Errorf("GetEliminatedCandidates returned %d results, 2 expected", len(db1.GetCandidateList(false)))
+	}
 
 	err = db1.StoreTransaction(Transaction{
 		userID: "billy",

@@ -30,6 +30,15 @@ const (
 	After
 ) // Golang Enum notation is weird
 
+// CreateSchedule makes a new schedule
+func CreateSchedule(start time.Time, end time.Time, elim int) Schedule {
+	return Schedule{
+		startTime:            start,
+		endTime:              end,
+		numberOfEliminations: elim,
+	}
+}
+
 // GetPhase returns the current phase of the schedule
 func (sch Schedule) GetPhase() Phase {
 	now := time.Now()
