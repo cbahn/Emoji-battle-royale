@@ -1,7 +1,7 @@
 Emoji-battle-royale
 ================
 
-A golang webserver I'm using to host a battle royale style voteoff for emojis on my discord
+A golang webserver I'm using to host a battle royale style voteoff for emojis on my discord. In progress.
 
 Work in progress
 
